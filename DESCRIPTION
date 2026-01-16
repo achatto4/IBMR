@@ -1,0 +1,24 @@
+Package: IBMR
+Title: Instrument Borrowing for Mendelian Randomization
+Version: 0.1.0
+Authors@R: 
+    person("Anagh", "Chattopadhyay", 
+           email = "achatto4@jh.edu", 
+           role = c("aut", "cre"))
+Description: Tools for borrowing genetic instruments across datasets in 
+    Mendelian randomization analyses. Includes methods for assessing 
+    coheterogeneity, multidimensional mode-based estimation, and 
+    MR-PRESSO with instrument borrowing.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports:
+    MASS,
+    ks,
+    stats
+Suggests:
+    parallel,
+    testthat (>= 3.0.0)
+URL: https://github.com/achatto4/IBMR
+BugReports: https://anaghchattopadhyay.github.io/
