@@ -1,47 +1,82 @@
 # IBMR
 
-`IBMR` provides tools for instrument borrowing in Mendelian randomization when you have:
+`IBMR` implements an instrument borrowing framework for Mendelian randomization
+(MR) using summary-level genetic association data.
+
+The package is designed for settings in which the analyst has:
 
 - one exposure of interest
 - one primary outcome trait
 - one auxiliary outcome trait, or several candidate auxiliary traits
 
-The package is built around a simple workflow:
+The central idea is that closely related outcome traits may share overlapping
+sets of valid instruments, or may reflect similar underlying mechanisms of
+instrument invalidity, with respect to a common exposure. When such overlap is
+present, borrowing information across traits can improve robustness and
+efficiency in MR estimation.
+
+The package is organized around the following workflow:
 
 1. Start with SNP-level summary statistics for the exposure and outcome traits.
 2. Measure coheterogeneity between the primary outcome and one or more auxiliary traits.
-3. If several auxiliaries are available, pick the auxiliary trait with the strongest coheterogeneity with the primary outcome.
+3. If several auxiliaries are available, identify the auxiliary trait with the strongest coheterogeneity with the primary outcome.
 4. Re-use that auxiliary trait in downstream instrument-borrowing analyses with `IBMODE()` or `IBPRESSO()`.
+
+## Overview
+
+Mendelian randomization is widely used to estimate causal effects of exposures
+on outcomes using genetic variants as instrumental variables. In practice,
+however, standard MR procedures can lose power or become biased when a
+substantial fraction of candidate instruments are invalid.
+
+`IBMR` addresses this problem by introducing a coheterogeneity-based screening
+step for identifying auxiliary traits that share relevant heterogeneity
+structure with a primary outcome of interest. The selected auxiliary trait can
+then be incorporated into downstream robust MR procedures through:
+
+- `IBMODE()`, an instrument-borrowing extension of mode-based estimation
+- `IBPRESSO()`, an instrument-borrowing extension of MR-PRESSO
+
+This package is therefore intended for analyses in which the goal is not only
+to estimate a causal effect for a primary outcome, but also to strengthen that
+analysis by leveraging information from related outcome traits.
 
 ## Graphical Overview
 
 ![IBMR graphical summary](man/figures/ibmr-graphical-summary.png)
 
-The figure summarizes the full instrument-borrowing workflow.
+The figure summarizes the conceptual and methodological workflow implemented in
+`IBMR`.
 
 - Panel A shows the motivating setting: some candidate instruments for the
   exposure are valid, while others are invalid because of pleiotropic or
   confounded pathways. The primary outcome and an auxiliary outcome may still
-  share useful structure that helps identify the more reliable signal.
+  share useful structure that can be exploited in joint analysis.
 - Panel B shows the auxiliary-trait screening step. For a given primary trait,
   `IBMR` calculates coheterogeneity with each candidate auxiliary trait and
-  uses that pattern to identify the most suitable auxiliary trait for borrowing.
+  uses this information to identify the most suitable auxiliary trait for
+  borrowing.
 - Panel C shows the SNP-level summary-statistics inputs used by the methods:
   SNP-exposure effects, SNP-outcome effects, and ratio estimates for the
   primary and auxiliary traits.
 - Panel D shows the downstream joint-analysis idea. Once an auxiliary trait has
-  been selected, the pair of traits can be analyzed jointly to improve robust
-  estimation and outlier detection through `IBMODE()` and `IBPRESSO()`.
+  been selected, the paired traits can be analyzed jointly to improve robust
+  estimation and outlier detection using `IBMODE()` and `IBPRESSO()`.
 
 ## What Problem This Package Solves
 
-In many Mendelian randomization settings, a primary outcome may share pleiotropic structure with another trait. `IBMR` helps you quantify that shared structure and then exploit it in downstream estimation and outlier detection.
+In many Mendelian randomization applications, a primary outcome may share
+pleiotropic structure with one or more related traits. `IBMR` is designed to
+quantify that shared structure and then exploit it in downstream estimation and
+outlier detection.
 
 The package currently exposes three main functions:
 
-- `coheterogeneity_Q()`: estimates pairwise coheterogeneity correlation across traits using a guarded theoretical delta-exact method
+- `coheterogeneity_Q()`: estimates pairwise coheterogeneity across traits using
+  a guarded theoretical delta-exact method
 - `IBMODE()`: performs multidimensional mode-based estimation across outcomes
-- `IBPRESSO()`: performs MR-PRESSO with an auxiliary trait for instrument borrowing
+- `IBPRESSO()`: performs MR-PRESSO with an auxiliary trait for instrument
+  borrowing
 
 ## Installation
 
@@ -86,13 +121,15 @@ library(IBMR)
 
 ## Required Inputs
 
-At minimum, the package expects SNP-level summary statistics for:
+At minimum, the package requires SNP-level summary statistics for:
 
 - the exposure
 - the primary outcome
 - one auxiliary trait
 
-If you want to compare several candidate auxiliaries, you provide the same exposure summary statistics together with the primary outcome and all candidate auxiliary outcomes.
+If several candidate auxiliary traits are available, the same exposure summary
+statistics are combined with the primary outcome and all candidate auxiliary
+outcomes in order to screen for the most informative auxiliary trait.
 
 ### Core objects
 
@@ -107,7 +144,8 @@ The rows of all objects must refer to the same SNPs in the same order.
 
 ### Recommended matrix layout
 
-For coheterogeneity screening, put the primary outcome in one column and each candidate auxiliary trait in the remaining columns.
+For coheterogeneity screening, place the primary outcome in one column and each
+candidate auxiliary trait in the remaining columns.
 
 For example:
 
@@ -122,7 +160,7 @@ The same column order should be used in `seBetaYG_matrix`.
 
 ### Scenario 1: One primary outcome and one auxiliary trait
 
-This is the simplest use case. You already know which auxiliary trait you want to borrow from.
+This is the simplest use case. The auxiliary trait has already been selected.
 
 1. Build a two-column outcome matrix containing the primary outcome and the auxiliary trait.
 2. Run `coheterogeneity_Q()`.
@@ -172,7 +210,7 @@ Interpretation:
 
 ### Scenario 2: One primary outcome and multiple candidate auxiliary traits
 
-This is the main screening use case.
+This is the principal screening use case.
 
 1. Put the primary outcome and all candidate auxiliaries into the outcome matrices.
 2. Run `coheterogeneity_Q()`.
@@ -226,7 +264,7 @@ ranking <- ranking[order(-ranking$abs_rho), ]
 ranking
 ```
 
-A common decision rule is:
+A practical decision rule is:
 
 - first prefer auxiliaries with `flag == "OK"`
 - then prioritize pairs with small `p_value`
@@ -234,7 +272,8 @@ A common decision rule is:
 
 ## Understanding `coheterogeneity_Q()`
 
-`coheterogeneity_Q()` now uses a guarded theoretical method with several built-in protections:
+`coheterogeneity_Q()` uses a guarded theoretical method with several built-in
+protections:
 
 - optional SNP restriction through `SNP_keep`
 - minimum exposure effect filtering via `bx_min`
@@ -285,7 +324,8 @@ The current `coheterogeneity_Q()` output is no longer the old `Q_matrix` / `Q_co
 
 ## Using the Selected Auxiliary in `IBMODE()`
 
-After screening, take the primary outcome together with the chosen auxiliary trait and fit a two-outcome multidimensional mode-based estimator.
+After screening, the primary outcome and the selected auxiliary trait can be
+analyzed jointly using a two-outcome multidimensional mode-based estimator.
 
 Example:
 
@@ -314,11 +354,13 @@ ibmode_res <- IBMODE(
 ibmode_res
 ```
 
-Use `IBMODE()` when you want joint mode-based estimation across the primary and auxiliary traits.
+`IBMODE()` is appropriate when the goal is robust joint mode-based estimation
+across the primary and auxiliary traits.
 
 ## Using the Selected Auxiliary in `IBPRESSO()`
 
-`IBPRESSO()` expects a data frame and column names rather than matrices. Once you have selected the auxiliary trait, build a SNP-level table containing:
+`IBPRESSO()` expects a data frame and column names rather than matrices. Once
+an auxiliary trait has been selected, build a SNP-level table containing:
 
 - exposure effect and exposure SE
 - primary outcome effect and primary outcome SE
@@ -355,11 +397,12 @@ ibpresso_res <- IBPRESSO(
 ibpresso_res
 ```
 
-Use `IBPRESSO()` when you want to detect pleiotropic outliers and assess whether removing them changes the primary MR estimate.
+`IBPRESSO()` is appropriate when the goal is to detect pleiotropic outliers and
+assess whether removing them materially changes the primary MR estimate.
 
 ## End-to-End Example
 
-This pattern is usually what users will do in practice:
+This is the typical end-to-end workflow in practice:
 
 ```r
 library(IBMR)
@@ -391,7 +434,7 @@ ibmode_res <- IBMODE(
 )
 ```
 
-If you prefer a more conservative screening rule, rank only auxiliaries with:
+For a more conservative screening rule, rank only auxiliaries with:
 
 - `flag == "OK"`
 - finite `p_value`
@@ -435,9 +478,9 @@ The toy dataset is generated from summary-level effects for 80 SNPs.
 - `aux_trait_2` is generated with much weaker shared structure, so it acts as a
   less suitable auxiliary candidate.
 
-This setup is deliberately simple, but it reflects the core screening idea of
-the package: among multiple auxiliary outcomes, we want to find the one that
-best tracks the same heterogeneity pattern as the primary outcome.
+This setup is deliberately simple, but it reflects the central screening idea
+of the package: among multiple auxiliary outcomes, we seek the trait that most
+closely tracks the heterogeneity pattern observed for the primary outcome.
 
 ### Step 1: Extract the toy data
 
@@ -490,7 +533,7 @@ ranking <- ranking[order(-ranking$abs_rho), ]
 ranking
 ```
 
-You would usually choose the auxiliary trait that:
+The auxiliary trait would typically be chosen to satisfy the following:
 
 - has the largest absolute `rho`
 - has a usable flag such as `"OK"`
@@ -549,15 +592,16 @@ trait that was selected by coheterogeneity screening.
 
 ### What this toy example is meant to demonstrate
 
-This example is not meant to be a realistic full-scale GWAS simulation. Its
-purpose is to make the package workflow easy to understand:
+This example is not intended to represent a realistic full-scale GWAS
+simulation. Its purpose is to provide a transparent and reproducible
+illustration of the package workflow:
 
 1. load summary statistics
 2. compare the primary outcome against candidate auxiliaries
 3. choose the auxiliary with the strongest coheterogeneity signal
 4. use that same auxiliary in `IBMODE()` or `IBPRESSO()`
 
-That is the main practical use case that `IBMR` is designed to support.
+This is the principal practical use case that `IBMR` is designed to support.
 
 ## Input Quality Checks
 
