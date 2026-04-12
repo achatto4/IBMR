@@ -11,25 +11,24 @@ permissions:
 jobs:
   pkgdown:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/r-lib/pkgdown:latest
+
     steps:
       - uses: actions/checkout@v4
 
-      - uses: r-lib/actions/setup-pandoc@v2
+      - name: Setup Git safe directory
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
-      - uses: r-lib/actions/setup-r@v2
-        with:
-          use-public-rspm: true
-
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: any::pkgdown
-          needs: website
+      - name: Install package
+        run: R CMD INSTALL .
 
       - name: Build site
         run: Rscript -e 'pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)'
 
-      - name: Deploy to GitHub Pages
-        uses: JamesIves/github-pages-deploy-action@v4
+      - name: Deploy to GitHub Pages branch
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          branch: gh-pages
-          folder: docs
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          publish_branch: gh-pages
