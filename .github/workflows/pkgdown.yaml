@@ -10,10 +10,13 @@ permissions:
 
 jobs:
   pkgdown:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: r-lib/actions/setup-pandoc@v2
 
@@ -29,12 +32,11 @@ jobs:
       - name: Install package
         run: R CMD INSTALL .
 
-      - name: Build site
-        run: Rscript -e 'pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)'
+      - name: Build site into docs/
+        run: Rscript -e 'pkgdown::build_site(new_process = FALSE, install = FALSE)'
 
-      - name: Deploy to gh-pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Commit rendered site
+        uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs
-          publish_branch: gh-pages
+          commit_message: "Build pkgdown site"
+          file_pattern: docs/*
