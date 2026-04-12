@@ -13,6 +13,26 @@ The package is built around a simple workflow:
 3. If several auxiliaries are available, pick the auxiliary trait with the strongest coheterogeneity with the primary outcome.
 4. Re-use that auxiliary trait in downstream instrument-borrowing analyses with `IBMODE()` or `IBPRESSO()`.
 
+## Graphical Overview
+
+![IBMR graphical summary](man/figures/ibmr-graphical-summary.png)
+
+The figure summarizes the full instrument-borrowing workflow.
+
+- Panel A shows the motivating setting: some candidate instruments for the
+  exposure are valid, while others are invalid because of pleiotropic or
+  confounded pathways. The primary outcome and an auxiliary outcome may still
+  share useful structure that helps identify the more reliable signal.
+- Panel B shows the auxiliary-trait screening step. For a given primary trait,
+  `IBMR` calculates coheterogeneity with each candidate auxiliary trait and
+  uses that pattern to identify the most suitable auxiliary trait for borrowing.
+- Panel C shows the SNP-level summary-statistics inputs used by the methods:
+  SNP-exposure effects, SNP-outcome effects, and ratio estimates for the
+  primary and auxiliary traits.
+- Panel D shows the downstream joint-analysis idea. Once an auxiliary trait has
+  been selected, the pair of traits can be analyzed jointly to improve robust
+  estimation and outlier detection through `IBMODE()` and `IBPRESSO()`.
+
 ## What Problem This Package Solves
 
 In many Mendelian randomization settings, a primary outcome may share pleiotropic structure with another trait. `IBMR` helps you quantify that shared structure and then exploit it in downstream estimation and outlier detection.
@@ -25,18 +45,42 @@ The package currently exposes three main functions:
 
 ## Installation
 
-You can install the package locally from the repository root with:
+You can install `IBMR` directly from GitHub.
+
+### Install from GitHub
+
+First install `devtools` from CRAN:
+
+```r
+install.packages("devtools")
+```
+
+Then load `devtools`:
+
+```r
+library(devtools)
+```
+
+Install `IBMR` from GitHub:
+
+```r
+devtools::install_github("achatto4/IBMR")
+```
+
+Finally, load the package:
+
+```r
+library(IBMR)
+```
+
+### Local installation during development
+
+If you are working from a local clone of the repository, you can also install
+the package from the package directory:
 
 ```r
 install.packages(c("MASS", "ks"))
-
-# from the package directory
 devtools::install(".")
-```
-
-Or load it directly during development:
-
-```r
 library(IBMR)
 ```
 
@@ -354,6 +398,166 @@ If you prefer a more conservative screening rule, rank only auxiliaries with:
 - `p_value < 0.05`
 
 and then choose the largest `abs(rho)` among them.
+
+## Toy Example With Simulated Summary Statistics
+
+The package includes a ready-to-use toy dataset called `toy_ibmr_example`.
+
+Load it with:
+
+```r
+library(IBMR)
+data("toy_ibmr_example")
+```
+
+This object is a named list containing:
+
+- one exposure
+- one primary outcome
+- two candidate auxiliary traits
+
+You can inspect its contents with:
+
+```r
+names(toy_ibmr_example)
+str(toy_ibmr_example$simulation_setup)
+```
+
+### Simulation setup
+
+The toy dataset is generated from summary-level effects for 80 SNPs.
+
+- `BetaXG` is simulated as the SNP-exposure association vector.
+- `primary_trait` is generated to depend on both the exposure signal and a
+  shared latent component.
+- `aux_trait_1` is generated to share that same latent component, so it should
+  usually have stronger coheterogeneity with the primary trait.
+- `aux_trait_2` is generated with much weaker shared structure, so it acts as a
+  less suitable auxiliary candidate.
+
+This setup is deliberately simple, but it reflects the core screening idea of
+the package: among multiple auxiliary outcomes, we want to find the one that
+best tracks the same heterogeneity pattern as the primary outcome.
+
+### Step 1: Extract the toy data
+
+```r
+BetaXG <- toy_ibmr_example$BetaXG
+seBetaXG <- toy_ibmr_example$seBetaXG
+BetaYG_matrix <- toy_ibmr_example$BetaYG_matrix
+seBetaYG_matrix <- toy_ibmr_example$seBetaYG_matrix
+
+colnames(BetaYG_matrix)
+toy_ibmr_example$primary_trait
+toy_ibmr_example$candidate_auxiliaries
+```
+
+### Step 2: Compute coheterogeneity
+
+```r
+cohet_res <- coheterogeneity_Q(
+  BetaXG = BetaXG,
+  BetaYG_matrix = BetaYG_matrix,
+  seBetaXG = seBetaXG,
+  seBetaYG_matrix = seBetaYG_matrix,
+  F_min = 5,
+  min_K_pair = 20
+)
+
+round(cohet_res$rho, 3)
+round(cohet_res$p_value, 3)
+cohet_res$flag
+```
+
+A typical result will show that `aux_trait_1` has a stronger coheterogeneity
+with `primary_trait` than `aux_trait_2`, because `aux_trait_1` was simulated to
+share more of the same latent structure.
+
+### Step 3: Rank auxiliary traits for the primary outcome
+
+```r
+ranking <- data.frame(
+  aux_trait = colnames(cohet_res$rho),
+  rho = cohet_res$rho["primary_trait", ],
+  p_value = cohet_res$p_value["primary_trait", ],
+  flag = cohet_res$flag["primary_trait", ],
+  stringsAsFactors = FALSE
+)
+
+ranking <- subset(ranking, aux_trait != "primary_trait")
+ranking$abs_rho <- abs(ranking$rho)
+ranking <- ranking[order(-ranking$abs_rho), ]
+ranking
+```
+
+You would usually choose the auxiliary trait that:
+
+- has the largest absolute `rho`
+- has a usable flag such as `"OK"`
+- and, if desired, also has a small `p_value`
+
+In this toy dataset, that should usually be `toy_ibmr_example$recommended_auxiliary`,
+which is `aux_trait_1`.
+
+### Step 4: Run `IBMODE()` with the selected auxiliary
+
+```r
+chosen_aux <- toy_ibmr_example$recommended_auxiliary
+
+BetaYG_mode <- BetaYG_matrix[, c("primary_trait", chosen_aux), drop = FALSE]
+seBetaYG_mode <- seBetaYG_matrix[, c("primary_trait", chosen_aux), drop = FALSE]
+
+ibmode_res <- IBMODE(
+  BetaXG = BetaXG,
+  BetaYG_matrix = BetaYG_mode,
+  seBetaXG = seBetaXG,
+  seBetaYG_matrix = seBetaYG_mode,
+  phi = c(1, 0.5),
+  n_boot = 200
+)
+
+ibmode_res
+```
+
+This returns joint mode-based estimates for the primary trait and the selected
+auxiliary trait.
+
+### Step 5: Run `IBPRESSO()` with the same auxiliary
+
+```r
+dat_ibpresso <- toy_ibmr_example$dat_ibpresso_aux1
+
+ibpresso_res <- IBPRESSO(
+  BetaOutcome = "beta_primary",
+  BetaExposure = "beta_exposure",
+  BetaAux = "beta_aux",
+  SdOutcome = "se_primary",
+  SdExposure = "se_exposure",
+  SdAux = "se_aux",
+  data = dat_ibpresso,
+  OUTLIERtest = TRUE,
+  DISTORTIONtest = FALSE,
+  NbDistribution = 200,
+  seed = 123
+)
+
+ibpresso_res
+```
+
+This gives an instrument-borrowing MR-PRESSO analysis using the same auxiliary
+trait that was selected by coheterogeneity screening.
+
+### What this toy example is meant to demonstrate
+
+This example is not meant to be a realistic full-scale GWAS simulation. Its
+purpose is to make the package workflow easy to understand:
+
+1. load summary statistics
+2. compare the primary outcome against candidate auxiliaries
+3. choose the auxiliary with the strongest coheterogeneity signal
+4. use that same auxiliary in `IBMODE()` or `IBPRESSO()`
+
+That is the main practical use case that `IBMR` is designed to support.
 
 ## Input Quality Checks
 
