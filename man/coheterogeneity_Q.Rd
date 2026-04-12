@@ -2,37 +2,87 @@
 % Please edit documentation in R/Coheterogeneity.R
 \name{coheterogeneity_Q}
 \alias{coheterogeneity_Q}
-\title{Calculate Coheterogeneity Q Statistics}
+\title{Calculate Coheterogeneity Using a Guarded Theoretical Method}
 \usage{
 coheterogeneity_Q(
-  BetaXG = NULL,
+  BetaXG,
   BetaYG_matrix = NULL,
-  seBetaXG = NULL,
+  seBetaXG,
   seBetaYG_matrix = NULL,
   BetaIV_matrix = NULL,
-  seBetaIV_matrix = NULL
+  seBetaIV_matrix = NULL,
+  ldsc_intercepts = NULL,
+  SNP_keep = NULL,
+  use_ldsc = TRUE,
+  alpha = 0.05,
+  step_mult = 0.001,
+  eps = 1e-12,
+  bx_min = 1e-06,
+  F_min = 0,
+  winsor_theta = 20,
+  min_K_pair = 50,
+  return_diagnostics = FALSE
 )
 }
 \arguments{
-\item{BetaXG}{Numeric vector of SNP-exposure associations (optional if BetaIV_matrix provided)}
+\item{BetaXG}{Numeric vector of SNP-exposure associations.}
 
-\item{BetaYG_matrix}{Matrix of SNP-outcome associations, rows = SNPs, columns = traits (optional if BetaIV_matrix provided)}
+\item{BetaYG_matrix}{Matrix of SNP-outcome associations, rows = SNPs,
+columns = traits. Optional if \code{BetaIV_matrix} is provided.}
 
-\item{seBetaXG}{Numeric vector of standard errors for BetaXG (optional)}
+\item{seBetaXG}{Numeric vector of standard errors for \code{BetaXG}.}
 
-\item{seBetaYG_matrix}{Matrix of standard errors for BetaYG_matrix (optional)}
+\item{seBetaYG_matrix}{Matrix of standard errors for \code{BetaYG_matrix}.
+Optional if \code{seBetaIV_matrix} is provided.}
 
-\item{BetaIV_matrix}{Matrix of instrumental variable estimates (BetaYG/BetaXG), rows = SNPs, columns = traits}
+\item{BetaIV_matrix}{Matrix of ratio estimates (\code{BetaYG / BetaXG}), rows =
+SNPs, columns = traits. Used to reconstruct \code{BetaYG_matrix} when needed.}
 
-\item{seBetaIV_matrix}{Matrix of standard errors for BetaIV_matrix (optional)}
+\item{seBetaIV_matrix}{Matrix of standard errors for \code{BetaIV_matrix}. Used
+to reconstruct \code{seBetaYG_matrix} when needed.}
+
+\item{ldsc_intercepts}{Optional matrix of LDSC intercepts used for pairwise
+covariance adjustment.}
+
+\item{SNP_keep}{Optional logical or integer index vector specifying the SNPs
+to retain.}
+
+\item{use_ldsc}{Logical; if \code{TRUE}, use \code{ldsc_intercepts} when supplied.}
+
+\item{alpha}{Significance level retained for interface compatibility.}
+
+\item{step_mult}{Scalar used to scale finite-difference steps for the delta
+method standard error.}
+
+\item{eps}{Small positive constant used for numerical stabilization.}
+
+\item{bx_min}{Minimum absolute exposure effect size allowed.}
+
+\item{F_min}{Minimum first-stage F statistic threshold, where
+\code{F = (BetaXG / seBetaXG)^2}.}
+
+\item{winsor_theta}{Optional cap applied to ratio estimates to reduce
+instability from very small exposure effects. Set to \code{NULL} to disable.}
+
+\item{min_K_pair}{Minimum number of valid SNPs required for a trait pair.}
+
+\item{return_diagnostics}{Logical; if \code{TRUE}, include a diagnostics list.}
 }
 \value{
 A list containing:
-\item{Q_matrix}{Matrix of coheterogeneity Q statistics between trait pairs}
-\item{Q_corr_matrix}{Matrix of Q-correlation values between trait pairs (normalized Q)}
+\item{rho}{Pairwise coheterogeneity correlation matrix.}
+\item{se}{Pairwise standard error matrix for \code{rho}.}
+\item{z_statistic}{Pairwise z-statistic matrix.}
+\item{p_value}{Pairwise p-value matrix.}
+\item{K}{Matrix of valid SNP counts per trait pair.}
+\item{flag}{Matrix of per-pair diagnostic flags.}
+\item{method}{Method label for the estimator.}
+\item{guards}{List of guardrail settings used in the analysis.}
+\item{diagnostics}{Optional detailed diagnostics by trait pair.}
 }
 \description{
-Computes coheterogeneity Q and Q-correlation matrices for multiple traits
-in Mendelian Randomization analyses. This quantifies the similarity of
-causal effect estimates across different outcome traits.
+Computes pairwise coheterogeneity correlations across multiple outcome traits
+using a guarded delta-exact approach. The implementation supports optional
+SNP filtering, weak-instrument filtering, winsorization of ratio estimates,
+LDSC intercept adjustment, and per-pair diagnostics.
 }
