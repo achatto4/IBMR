@@ -3,6 +3,8 @@ name: pkgdown
 on:
   push:
     branches: [main, master]
+    paths-ignore:
+      - docs/**
   workflow_dispatch:
 
 permissions:
