@@ -1,0 +1,41 @@
+url: https://achatto4.github.io/IBMR/
+template:
+  bootstrap: 5
+
+home:
+  title: IBMR
+  description: Instrument borrowing for Mendelian randomization using summary-level genetic association data.
+
+navbar:
+  structure:
+    left: [intro, reference, articles]
+    right: [github]
+  components:
+    intro:
+      text: Home
+      href: index.html
+    reference:
+      text: Reference
+      href: reference/index.html
+    articles:
+      text: Articles
+      menu:
+      - text: Auxiliary Trait Selection
+        href: articles/auxiliary-selection.html
+      - text: Instrument Borrowing Workflow
+        href: articles/instrument-borrowing-workflow.html
+    github:
+      icon: fab fa-github
+      href: https://github.com/achatto4/IBMR
+
+reference:
+- title: Core functions
+  contents:
+  - coheterogeneity_Q
+  - IBMODE
+  - IBPRESSO
+  - print.mrpresso_ib
+
+- title: Example data
+  contents:
+  - toy_ibmr_example

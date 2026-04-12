@@ -19,6 +19,7 @@ Imports:
     stats
 Suggests:
     knitr,
+    pkgdown,
     rmarkdown,
     parallel,
     testthat (>= 3.0.0)
