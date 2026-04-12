@@ -36,6 +36,9 @@ jobs:
       - name: Install package
         run: R CMD INSTALL .
 
+      - name: Clean existing site
+        run: Rscript -e 'pkgdown::clean_site(force = TRUE)'
+
       - name: Build pkgdown site
         run: Rscript -e 'pkgdown::build_site(new_process = FALSE, install = FALSE)'
 
