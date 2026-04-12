@@ -21,7 +21,7 @@ and efficiency in downstream MR analysis.
 
 ## Conceptual Workflow
 
-![IBMR graphical summary](man/figures/ibmr-graphical-summary.png)
+![IBMR graphical summary](reference/figures/ibmr-graphical-summary.png)
 
 The website is organized around the same workflow implemented in the package:
 
