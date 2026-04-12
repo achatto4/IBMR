@@ -18,7 +18,10 @@ Imports:
     ks,
     stats
 Suggests:
+    knitr,
+    rmarkdown,
     parallel,
     testthat (>= 3.0.0)
+VignetteBuilder: knitr
 URL: https://github.com/achatto4/IBMR
 BugReports: https://anaghchattopadhyay.github.io/
