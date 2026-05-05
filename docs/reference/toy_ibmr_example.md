@@ -55,6 +55,7 @@ A named list with the following entries:
 
 ## Details
 
-The data were simulated so that `aux_trait_1` shares more structure with
-the primary outcome than `aux_trait_2`, making it the more natural
+The data were simulated so that `aux_trait_1` shares a moderate latent
+heterogeneity component with the primary outcome, whereas `aux_trait_2`
+is much less aligned. This makes `aux_trait_1` the more natural
 auxiliary trait for instrument borrowing in the example workflow.

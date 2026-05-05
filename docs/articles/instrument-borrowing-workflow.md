@@ -19,6 +19,7 @@ pipeline.
 ## Load the Toy Example
 
 ``` r
+
 data("toy_ibmr_example")
 
 BetaXG <- toy_ibmr_example$BetaXG
@@ -36,6 +37,7 @@ more informative auxiliary trait for the primary outcome.
 ## Step 1: Screen Auxiliary Traits with Coheterogeneity
 
 ``` r
+
 cohet_res <- coheterogeneity_Q(
   BetaXG = BetaXG,
   BetaYG_matrix = BetaYG_matrix,
@@ -47,42 +49,44 @@ cohet_res <- coheterogeneity_Q(
 
 round(cohet_res$rho, 3)
 #>               primary_trait aux_trait_1 aux_trait_2
-#> primary_trait             1          NA          NA
-#> aux_trait_1              NA           1          NA
-#> aux_trait_2              NA          NA           1
+#> primary_trait         1.000       0.622      -0.036
+#> aux_trait_1           0.622       1.000      -0.141
+#> aux_trait_2          -0.036      -0.141       1.000
 round(cohet_res$p_value, 3)
 #>               primary_trait aux_trait_1 aux_trait_2
-#> primary_trait             0          NA          NA
-#> aux_trait_1              NA           0          NA
-#> aux_trait_2              NA          NA           0
+#> primary_trait         0.000           0       0.271
+#> aux_trait_1           0.000           0       0.000
+#> aux_trait_2           0.271           0       0.000
 cohet_res$flag
 #>               primary_trait aux_trait_1 aux_trait_2
-#> primary_trait "diag"        "tau0"      "tau0"     
-#> aux_trait_1   "tau0"        "diag"      "tau0"     
-#> aux_trait_2   "tau0"        "tau0"      "diag"
+#> primary_trait "diag"        "OK"        "OK"       
+#> aux_trait_1   "OK"          "diag"      "OK"       
+#> aux_trait_2   "OK"          "OK"        "diag"
 ```
 
 We focus on the row corresponding to the primary outcome.
 
 ``` r
+
 rho_primary <- cohet_res$rho[primary_name, ]
 p_primary <- cohet_res$p_value[primary_name, ]
 flag_primary <- cohet_res$flag[primary_name, ]
 
 rho_primary
 #> primary_trait   aux_trait_1   aux_trait_2 
-#>             1            NA            NA
+#>    1.00000000    0.62170790   -0.03630623
 p_primary
 #> primary_trait   aux_trait_1   aux_trait_2 
-#>             0            NA            NA
+#>  0.000000e+00 1.024886e-116  2.713419e-01
 flag_primary
 #> primary_trait   aux_trait_1   aux_trait_2 
-#>        "diag"        "tau0"        "tau0"
+#>        "diag"          "OK"          "OK"
 ```
 
 ## Step 2: Rank Candidate Auxiliary Traits
 
 ``` r
+
 ranking <- data.frame(
   aux_trait = candidate_aux,
   rho = rho_primary[candidate_aux],
@@ -94,9 +98,9 @@ ranking <- data.frame(
 ranking$abs_rho <- abs(ranking$rho)
 ranking <- ranking[order(-ranking$abs_rho), ]
 ranking
-#>               aux_trait rho p_value flag abs_rho
-#> aux_trait_1 aux_trait_1  NA      NA tau0      NA
-#> aux_trait_2 aux_trait_2  NA      NA tau0      NA
+#>               aux_trait         rho       p_value flag    abs_rho
+#> aux_trait_1 aux_trait_1  0.62170790 1.024886e-116   OK 0.62170790
+#> aux_trait_2 aux_trait_2 -0.03630623  2.713419e-01   OK 0.03630623
 ```
 
 The selected auxiliary trait can be taken as the candidate with the
@@ -104,6 +108,7 @@ largest absolute coheterogeneity among those with acceptable diagnostic
 flags.
 
 ``` r
+
 chosen_aux <- ranking$aux_trait[1]
 chosen_aux
 #> [1] "aux_trait_1"
@@ -112,6 +117,7 @@ chosen_aux
 For the packaged toy example, the intended selected auxiliary trait is:
 
 ``` r
+
 toy_ibmr_example$recommended_auxiliary
 #> [1] "aux_trait_1"
 ```
@@ -122,6 +128,7 @@ Once the auxiliary trait has been selected, we subset the outcome
 matrices to the primary outcome and the chosen auxiliary trait.
 
 ``` r
+
 BetaYG_mode <- BetaYG_matrix[, c(primary_name, chosen_aux), drop = FALSE]
 seBetaYG_mode <- seBetaYG_matrix[, c(primary_name, chosen_aux), drop = FALSE]
 ```
@@ -130,6 +137,7 @@ We then run
 [`IBMODE()`](https://achatto4.github.io/IBMR/reference/IBMODE.md).
 
 ``` r
+
 ibmode_res <- IBMODE(
   BetaXG = BetaXG,
   BetaYG_matrix = BetaYG_mode,
@@ -153,20 +161,22 @@ expects a data frame rather than matrices. The toy dataset includes a
 ready-made example for the recommended auxiliary trait.
 
 ``` r
+
 dat_ibpresso <- toy_ibmr_example$dat_ibpresso_aux1
 head(dat_ibpresso)
-#>   beta_exposure se_exposure beta_primary se_primary    beta_aux se_aux
-#> 1    0.06879049        0.01  0.024371675       0.02 0.009380572   0.02
-#> 2    0.07539645        0.01  0.010366726       0.02 0.018450490   0.02
-#> 3    0.11117417        0.01  0.004073380       0.02 0.038306228   0.02
-#> 4    0.08141017        0.01  0.058358081       0.02 0.016712024   0.02
-#> 5    0.08258575        0.01  0.009041277       0.02 0.016210084   0.02
-#> 6    0.11430130        0.01  0.030819265       0.02 0.051580327   0.02
+#>   beta_exposure se_exposure beta_primary se_primary   beta_aux se_aux
+#> 1    0.08879049       0.005  0.017732229      0.008 0.01965337  0.008
+#> 2    0.09539645       0.005 -0.021832887      0.008 0.01928450  0.008
+#> 3    0.13117417       0.005  0.015588900      0.008 0.02884544  0.008
+#> 4    0.10141017       0.005  0.003214524      0.008 0.04533534  0.008
+#> 5    0.10258575       0.005  0.093197322      0.008 0.08665289  0.008
+#> 6    0.13430130       0.005  0.012196435      0.008 0.01398760  0.008
 ```
 
 The analysis can be run as follows.
 
 ``` r
+
 ibpresso_res <- IBPRESSO(
   BetaOutcome = "beta_primary",
   BetaExposure = "beta_exposure",

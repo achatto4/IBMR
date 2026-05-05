@@ -3,7 +3,7 @@
 ## Core functions
 
 - [`coheterogeneity_Q()`](https://achatto4.github.io/IBMR/reference/coheterogeneity_Q.md)
-  : Calculate Coheterogeneity Using a Guarded Theoretical Method
+  : Calculate Coheterogeneity Using a Guarded Closed-Form Method
 - [`IBMODE()`](https://achatto4.github.io/IBMR/reference/IBMODE.md) :
   Multidimensional Mode-Based Estimation for Mendelian Randomization
 - [`IBPRESSO()`](https://achatto4.github.io/IBMR/reference/IBPRESSO.md)

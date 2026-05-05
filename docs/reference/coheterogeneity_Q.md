@@ -1,9 +1,9 @@
-# Calculate Coheterogeneity Using a Guarded Theoretical Method
+# Calculate Coheterogeneity Using a Guarded Closed-Form Method
 
 Computes pairwise coheterogeneity correlations across multiple outcome
-traits using a guarded delta-exact approach. The implementation supports
-optional SNP filtering, weak-instrument filtering, winsorization of
-ratio estimates, LDSC intercept adjustment, and per-pair diagnostics.
+traits using the bias-corrected moment estimator and closed-form plug-in
+standard error described for instrument-borrowing Mendelian
+randomization.
 
 ## Usage
 
@@ -19,11 +19,9 @@ coheterogeneity_Q(
   SNP_keep = NULL,
   use_ldsc = TRUE,
   alpha = 0.05,
-  step_mult = 0.001,
   eps = 1e-12,
   bx_min = 1e-06,
   F_min = 0,
-  winsor_theta = 20,
   min_K_pair = 50,
   return_diagnostics = FALSE
 )
@@ -61,8 +59,8 @@ coheterogeneity_Q(
 
 - ldsc_intercepts:
 
-  Optional matrix of LDSC intercepts used for pairwise covariance
-  adjustment.
+  Optional matrix of LDSC intercepts used for pairwise outcome
+  covariance adjustment.
 
 - SNP_keep:
 
@@ -75,12 +73,7 @@ coheterogeneity_Q(
 
 - alpha:
 
-  Significance level retained for interface compatibility.
-
-- step_mult:
-
-  Scalar used to scale finite-difference steps for the delta method
-  standard error.
+  Significance level retained in the returned guard settings.
 
 - eps:
 
@@ -94,11 +87,6 @@ coheterogeneity_Q(
 
   Minimum first-stage F statistic threshold, where
   `F = (BetaXG / seBetaXG)^2`.
-
-- winsor_theta:
-
-  Optional cap applied to ratio estimates to reduce instability from
-  very small exposure effects. Set to `NULL` to disable.
 
 - min_K_pair:
 
@@ -118,11 +106,15 @@ A list containing:
 
 - se:
 
-  Pairwise standard error matrix for `rho`.
+  Pairwise closed-form standard error matrix for `rho`.
 
 - z_statistic:
 
   Pairwise z-statistic matrix.
+
+- wald_statistic:
+
+  Pairwise Wald statistic matrix.
 
 - p_value:
 

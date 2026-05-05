@@ -39,6 +39,7 @@ package:
 Install the package from GitHub with:
 
 ``` r
+
 install.packages("devtools")
 library(devtools)
 devtools::install_github("achatto4/IBMR")
@@ -48,6 +49,7 @@ library(IBMR)
 ## Minimal Example
 
 ``` r
+
 library(IBMR)
 data("toy_ibmr_example")
 
@@ -90,7 +92,7 @@ including:
 ## Core functions
 
 - [`coheterogeneity_Q()`](https://achatto4.github.io/IBMR/reference/coheterogeneity_Q.md)
-  : Calculate Coheterogeneity Using a Guarded Theoretical Method
+  : Calculate Coheterogeneity Using a Guarded Closed-Form Method
 - [`IBMODE()`](https://achatto4.github.io/IBMR/reference/IBMODE.md) :
   Multidimensional Mode-Based Estimation for Mendelian Randomization
 - [`IBPRESSO()`](https://achatto4.github.io/IBMR/reference/IBPRESSO.md)

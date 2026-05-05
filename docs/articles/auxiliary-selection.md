@@ -39,6 +39,7 @@ In the common screening setting, the columns of `BetaYG_matrix` are:
 The package includes a toy dataset called `toy_ibmr_example`.
 
 ``` r
+
 data("toy_ibmr_example")
 
 names(toy_ibmr_example)
@@ -66,19 +67,23 @@ The simulation is deliberately simple. It was constructed so that
 example.
 
 ``` r
+
 str(toy_ibmr_example$simulation_setup)
-#> List of 11
+#> List of 14
 #>  $ seed                        : num 123
-#>  $ n_snps                      : num 80
-#>  $ exposure_mean               : num 0.08
+#>  $ n_snps                      : num 120
+#>  $ exposure_mean               : num 0.1
 #>  $ exposure_sd                 : num 0.02
-#>  $ exposure_se                 : num 0.01
-#>  $ outcome_se                  : num 0.02
+#>  $ exposure_se                 : num 0.005
+#>  $ outcome_se                  : num 0.008
 #>  $ primary_effect_on_exposure  : num 0.2
+#>  $ primary_noise_sd            : num 0.006
 #>  $ aux1_effect_on_exposure     : num 0.25
-#>  $ aux1_shared_component_weight: num 0.8
+#>  $ aux1_shared_component_weight: num 0.55
+#>  $ aux1_noise_sd               : num 0.025
 #>  $ aux2_effect_on_exposure     : num -0.05
-#>  $ shared_component_sd         : num 0.015
+#>  $ aux2_noise_sd               : num 0.035
+#>  $ shared_component_sd         : num 0.04
 ```
 
 ## Running the Coheterogeneity Analysis
@@ -86,6 +91,7 @@ str(toy_ibmr_example$simulation_setup)
 We begin by extracting the summary-statistics objects.
 
 ``` r
+
 BetaXG <- toy_ibmr_example$BetaXG
 seBetaXG <- toy_ibmr_example$seBetaXG
 BetaYG_matrix <- toy_ibmr_example$BetaYG_matrix
@@ -99,6 +105,7 @@ We now compute coheterogeneity across the primary outcome and the
 candidate auxiliary traits.
 
 ``` r
+
 cohet_res <- coheterogeneity_Q(
   BetaXG = BetaXG,
   BetaYG_matrix = BetaYG_matrix,
@@ -117,26 +124,27 @@ The principal outputs are:
 - `K`: number of SNPs contributing to each pairwise calculation
 
 ``` r
+
 round(cohet_res$rho, 3)
 #>               primary_trait aux_trait_1 aux_trait_2
-#> primary_trait             1          NA          NA
-#> aux_trait_1              NA           1          NA
-#> aux_trait_2              NA          NA           1
+#> primary_trait         1.000       0.622      -0.036
+#> aux_trait_1           0.622       1.000      -0.141
+#> aux_trait_2          -0.036      -0.141       1.000
 round(cohet_res$p_value, 3)
 #>               primary_trait aux_trait_1 aux_trait_2
-#> primary_trait             0          NA          NA
-#> aux_trait_1              NA           0          NA
-#> aux_trait_2              NA          NA           0
+#> primary_trait         0.000           0       0.271
+#> aux_trait_1           0.000           0       0.000
+#> aux_trait_2           0.271           0       0.000
 cohet_res$flag
 #>               primary_trait aux_trait_1 aux_trait_2
-#> primary_trait "diag"        "tau0"      "tau0"     
-#> aux_trait_1   "tau0"        "diag"      "tau0"     
-#> aux_trait_2   "tau0"        "tau0"      "diag"
+#> primary_trait "diag"        "OK"        "OK"       
+#> aux_trait_1   "OK"          "diag"      "OK"       
+#> aux_trait_2   "OK"          "OK"        "diag"
 cohet_res$K
 #>               primary_trait aux_trait_1 aux_trait_2
-#> primary_trait             0          80          80
-#> aux_trait_1              80           0          80
-#> aux_trait_2              80          80           0
+#> primary_trait             0         120         120
+#> aux_trait_1             120           0         120
+#> aux_trait_2             120         120           0
 ```
 
 ## Interpreting the Output
@@ -146,16 +154,17 @@ quantities of primary interest are the off-diagonal entries involving
 the primary outcome.
 
 ``` r
+
 primary_name <- toy_ibmr_example$primary_trait
 cohet_res$rho[primary_name, ]
 #> primary_trait   aux_trait_1   aux_trait_2 
-#>             1            NA            NA
+#>    1.00000000    0.62170790   -0.03630623
 cohet_res$p_value[primary_name, ]
 #> primary_trait   aux_trait_1   aux_trait_2 
-#>             0            NA            NA
+#>  0.000000e+00 1.024886e-116  2.713419e-01
 cohet_res$flag[primary_name, ]
 #> primary_trait   aux_trait_1   aux_trait_2 
-#>        "diag"        "tau0"        "tau0"
+#>        "diag"          "OK"          "OK"
 ```
 
 In this toy example, `aux_trait_1` should usually exhibit stronger
@@ -181,6 +190,7 @@ The screening step is usually carried out by ranking candidate
 auxiliaries for the primary outcome.
 
 ``` r
+
 ranking <- data.frame(
   aux_trait = colnames(cohet_res$rho),
   rho = cohet_res$rho[primary_name, ],
@@ -193,9 +203,9 @@ ranking <- subset(ranking, aux_trait != primary_name)
 ranking$abs_rho <- abs(ranking$rho)
 ranking <- ranking[order(-ranking$abs_rho), ]
 ranking
-#>               aux_trait rho p_value flag abs_rho
-#> aux_trait_1 aux_trait_1  NA      NA tau0      NA
-#> aux_trait_2 aux_trait_2  NA      NA tau0      NA
+#>               aux_trait         rho       p_value flag    abs_rho
+#> aux_trait_1 aux_trait_1  0.62170790 1.024886e-116   OK 0.62170790
+#> aux_trait_2 aux_trait_2 -0.03630623  2.713419e-01   OK 0.03630623
 ```
 
 A practical selection rule is:
@@ -208,6 +218,7 @@ A practical selection rule is:
 In this toy dataset, the intended selected auxiliary trait is:
 
 ``` r
+
 toy_ibmr_example$recommended_auxiliary
 #> [1] "aux_trait_1"
 ```
@@ -220,7 +231,6 @@ includes several guardrails to stabilize estimation:
 - optional SNP restriction through `SNP_keep`
 - weak-instrument filtering through `F_min`
 - small-exposure filtering through `bx_min`
-- optional winsorization through `winsor_theta`
 - pair-level diagnostic flags
 
 These are especially useful in large-scale screening settings where some

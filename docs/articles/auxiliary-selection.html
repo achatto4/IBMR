@@ -137,18 +137,21 @@ outcome than <code>aux_trait_2</code>, making it the more natural
 auxiliary trait in this example.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">toy_ibmr_example</span><span class="op">$</span><span class="va">simulation_setup</span><span class="op">)</span></span>
-<span><span class="co">#&gt; List of 11</span></span>
+<span><span class="co">#&gt; List of 14</span></span>
 <span><span class="co">#&gt;  $ seed                        : num 123</span></span>
-<span><span class="co">#&gt;  $ n_snps                      : num 80</span></span>
-<span><span class="co">#&gt;  $ exposure_mean               : num 0.08</span></span>
+<span><span class="co">#&gt;  $ n_snps                      : num 120</span></span>
+<span><span class="co">#&gt;  $ exposure_mean               : num 0.1</span></span>
 <span><span class="co">#&gt;  $ exposure_sd                 : num 0.02</span></span>
-<span><span class="co">#&gt;  $ exposure_se                 : num 0.01</span></span>
-<span><span class="co">#&gt;  $ outcome_se                  : num 0.02</span></span>
+<span><span class="co">#&gt;  $ exposure_se                 : num 0.005</span></span>
+<span><span class="co">#&gt;  $ outcome_se                  : num 0.008</span></span>
 <span><span class="co">#&gt;  $ primary_effect_on_exposure  : num 0.2</span></span>
+<span><span class="co">#&gt;  $ primary_noise_sd            : num 0.006</span></span>
 <span><span class="co">#&gt;  $ aux1_effect_on_exposure     : num 0.25</span></span>
-<span><span class="co">#&gt;  $ aux1_shared_component_weight: num 0.8</span></span>
+<span><span class="co">#&gt;  $ aux1_shared_component_weight: num 0.55</span></span>
+<span><span class="co">#&gt;  $ aux1_noise_sd               : num 0.025</span></span>
 <span><span class="co">#&gt;  $ aux2_effect_on_exposure     : num -0.05</span></span>
-<span><span class="co">#&gt;  $ shared_component_sd         : num 0.015</span></span></code></pre></div>
+<span><span class="co">#&gt;  $ aux2_noise_sd               : num 0.035</span></span>
+<span><span class="co">#&gt;  $ shared_component_sd         : num 0.04</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="running-the-coheterogeneity-analysis">Running the Coheterogeneity Analysis<a class="anchor" aria-label="anchor" href="#running-the-coheterogeneity-analysis"></a>
@@ -188,24 +191,24 @@ calculation</li>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">cohet_res</span><span class="op">$</span><span class="va">rho</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;               primary_trait aux_trait_1 aux_trait_2</span></span>
-<span><span class="co">#&gt; primary_trait             1          NA          NA</span></span>
-<span><span class="co">#&gt; aux_trait_1              NA           1          NA</span></span>
-<span><span class="co">#&gt; aux_trait_2              NA          NA           1</span></span>
+<span><span class="co">#&gt; primary_trait         1.000       0.622      -0.036</span></span>
+<span><span class="co">#&gt; aux_trait_1           0.622       1.000      -0.141</span></span>
+<span><span class="co">#&gt; aux_trait_2          -0.036      -0.141       1.000</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">cohet_res</span><span class="op">$</span><span class="va">p_value</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;               primary_trait aux_trait_1 aux_trait_2</span></span>
-<span><span class="co">#&gt; primary_trait             0          NA          NA</span></span>
-<span><span class="co">#&gt; aux_trait_1              NA           0          NA</span></span>
-<span><span class="co">#&gt; aux_trait_2              NA          NA           0</span></span>
+<span><span class="co">#&gt; primary_trait         0.000           0       0.271</span></span>
+<span><span class="co">#&gt; aux_trait_1           0.000           0       0.000</span></span>
+<span><span class="co">#&gt; aux_trait_2           0.271           0       0.000</span></span>
 <span><span class="va">cohet_res</span><span class="op">$</span><span class="va">flag</span></span>
 <span><span class="co">#&gt;               primary_trait aux_trait_1 aux_trait_2</span></span>
-<span><span class="co">#&gt; primary_trait "diag"        "tau0"      "tau0"     </span></span>
-<span><span class="co">#&gt; aux_trait_1   "tau0"        "diag"      "tau0"     </span></span>
-<span><span class="co">#&gt; aux_trait_2   "tau0"        "tau0"      "diag"</span></span>
+<span><span class="co">#&gt; primary_trait "diag"        "OK"        "OK"       </span></span>
+<span><span class="co">#&gt; aux_trait_1   "OK"          "diag"      "OK"       </span></span>
+<span><span class="co">#&gt; aux_trait_2   "OK"          "OK"        "diag"</span></span>
 <span><span class="va">cohet_res</span><span class="op">$</span><span class="va">K</span></span>
 <span><span class="co">#&gt;               primary_trait aux_trait_1 aux_trait_2</span></span>
-<span><span class="co">#&gt; primary_trait             0          80          80</span></span>
-<span><span class="co">#&gt; aux_trait_1              80           0          80</span></span>
-<span><span class="co">#&gt; aux_trait_2              80          80           0</span></span></code></pre></div>
+<span><span class="co">#&gt; primary_trait             0         120         120</span></span>
+<span><span class="co">#&gt; aux_trait_1             120           0         120</span></span>
+<span><span class="co">#&gt; aux_trait_2             120         120           0</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="interpreting-the-output">Interpreting the Output<a class="anchor" aria-label="anchor" href="#interpreting-the-output"></a>
@@ -217,13 +220,13 @@ entries involving the primary outcome.</p>
 <code class="sourceCode R"><span><span class="va">primary_name</span> <span class="op">&lt;-</span> <span class="va">toy_ibmr_example</span><span class="op">$</span><span class="va">primary_trait</span></span>
 <span><span class="va">cohet_res</span><span class="op">$</span><span class="va">rho</span><span class="op">[</span><span class="va">primary_name</span>, <span class="op">]</span></span>
 <span><span class="co">#&gt; primary_trait   aux_trait_1   aux_trait_2 </span></span>
-<span><span class="co">#&gt;             1            NA            NA</span></span>
+<span><span class="co">#&gt;    1.00000000    0.62170790   -0.03630623</span></span>
 <span><span class="va">cohet_res</span><span class="op">$</span><span class="va">p_value</span><span class="op">[</span><span class="va">primary_name</span>, <span class="op">]</span></span>
 <span><span class="co">#&gt; primary_trait   aux_trait_1   aux_trait_2 </span></span>
-<span><span class="co">#&gt;             0            NA            NA</span></span>
+<span><span class="co">#&gt;  0.000000e+00 1.024886e-116  2.713419e-01</span></span>
 <span><span class="va">cohet_res</span><span class="op">$</span><span class="va">flag</span><span class="op">[</span><span class="va">primary_name</span>, <span class="op">]</span></span>
 <span><span class="co">#&gt; primary_trait   aux_trait_1   aux_trait_2 </span></span>
-<span><span class="co">#&gt;        "diag"        "tau0"        "tau0"</span></span></code></pre></div>
+<span><span class="co">#&gt;        "diag"          "OK"          "OK"</span></span></code></pre></div>
 <p>In this toy example, <code>aux_trait_1</code> should usually exhibit
 stronger coheterogeneity with the primary outcome than
 <code>aux_trait_2</code>.</p>
@@ -268,9 +271,9 @@ auxiliaries for the primary outcome.</p>
 <span><span class="va">ranking</span><span class="op">$</span><span class="va">abs_rho</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">ranking</span><span class="op">$</span><span class="va">rho</span><span class="op">)</span></span>
 <span><span class="va">ranking</span> <span class="op">&lt;-</span> <span class="va">ranking</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="op">-</span><span class="va">ranking</span><span class="op">$</span><span class="va">abs_rho</span><span class="op">)</span>, <span class="op">]</span></span>
 <span><span class="va">ranking</span></span>
-<span><span class="co">#&gt;               aux_trait rho p_value flag abs_rho</span></span>
-<span><span class="co">#&gt; aux_trait_1 aux_trait_1  NA      NA tau0      NA</span></span>
-<span><span class="co">#&gt; aux_trait_2 aux_trait_2  NA      NA tau0      NA</span></span></code></pre></div>
+<span><span class="co">#&gt;               aux_trait         rho       p_value flag    abs_rho</span></span>
+<span><span class="co">#&gt; aux_trait_1 aux_trait_1  0.62170790 1.024886e-116   OK 0.62170790</span></span>
+<span><span class="co">#&gt; aux_trait_2 aux_trait_2 -0.03630623  2.713419e-01   OK 0.03630623</span></span></code></pre></div>
 <p>A practical selection rule is:</p>
 <ol style="list-style-type: decimal">
 <li>discard pairs with unusable flags</li>
@@ -297,8 +300,6 @@ stabilize estimation:</p>
 <li>weak-instrument filtering through <code>F_min</code>
 </li>
 <li>small-exposure filtering through <code>bx_min</code>
-</li>
-<li>optional winsorization through <code>winsor_theta</code>
 </li>
 <li>pair-level diagnostic flags</li>
 </ul>

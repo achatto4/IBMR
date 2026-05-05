@@ -112,19 +112,19 @@ for the primary outcome.</p>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">cohet_res</span><span class="op">$</span><span class="va">rho</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;               primary_trait aux_trait_1 aux_trait_2</span></span>
-<span><span class="co">#&gt; primary_trait             1          NA          NA</span></span>
-<span><span class="co">#&gt; aux_trait_1              NA           1          NA</span></span>
-<span><span class="co">#&gt; aux_trait_2              NA          NA           1</span></span>
+<span><span class="co">#&gt; primary_trait         1.000       0.622      -0.036</span></span>
+<span><span class="co">#&gt; aux_trait_1           0.622       1.000      -0.141</span></span>
+<span><span class="co">#&gt; aux_trait_2          -0.036      -0.141       1.000</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">cohet_res</span><span class="op">$</span><span class="va">p_value</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;               primary_trait aux_trait_1 aux_trait_2</span></span>
-<span><span class="co">#&gt; primary_trait             0          NA          NA</span></span>
-<span><span class="co">#&gt; aux_trait_1              NA           0          NA</span></span>
-<span><span class="co">#&gt; aux_trait_2              NA          NA           0</span></span>
+<span><span class="co">#&gt; primary_trait         0.000           0       0.271</span></span>
+<span><span class="co">#&gt; aux_trait_1           0.000           0       0.000</span></span>
+<span><span class="co">#&gt; aux_trait_2           0.271           0       0.000</span></span>
 <span><span class="va">cohet_res</span><span class="op">$</span><span class="va">flag</span></span>
 <span><span class="co">#&gt;               primary_trait aux_trait_1 aux_trait_2</span></span>
-<span><span class="co">#&gt; primary_trait "diag"        "tau0"      "tau0"     </span></span>
-<span><span class="co">#&gt; aux_trait_1   "tau0"        "diag"      "tau0"     </span></span>
-<span><span class="co">#&gt; aux_trait_2   "tau0"        "tau0"      "diag"</span></span></code></pre></div>
+<span><span class="co">#&gt; primary_trait "diag"        "OK"        "OK"       </span></span>
+<span><span class="co">#&gt; aux_trait_1   "OK"          "diag"      "OK"       </span></span>
+<span><span class="co">#&gt; aux_trait_2   "OK"          "OK"        "diag"</span></span></code></pre></div>
 <p>We focus on the row corresponding to the primary outcome.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">rho_primary</span> <span class="op">&lt;-</span> <span class="va">cohet_res</span><span class="op">$</span><span class="va">rho</span><span class="op">[</span><span class="va">primary_name</span>, <span class="op">]</span></span>
@@ -133,13 +133,13 @@ for the primary outcome.</p>
 <span></span>
 <span><span class="va">rho_primary</span></span>
 <span><span class="co">#&gt; primary_trait   aux_trait_1   aux_trait_2 </span></span>
-<span><span class="co">#&gt;             1            NA            NA</span></span>
+<span><span class="co">#&gt;    1.00000000    0.62170790   -0.03630623</span></span>
 <span><span class="va">p_primary</span></span>
 <span><span class="co">#&gt; primary_trait   aux_trait_1   aux_trait_2 </span></span>
-<span><span class="co">#&gt;             0            NA            NA</span></span>
+<span><span class="co">#&gt;  0.000000e+00 1.024886e-116  2.713419e-01</span></span>
 <span><span class="va">flag_primary</span></span>
 <span><span class="co">#&gt; primary_trait   aux_trait_1   aux_trait_2 </span></span>
-<span><span class="co">#&gt;        "diag"        "tau0"        "tau0"</span></span></code></pre></div>
+<span><span class="co">#&gt;        "diag"          "OK"          "OK"</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="step-2-rank-candidate-auxiliary-traits">Step 2: Rank Candidate Auxiliary Traits<a class="anchor" aria-label="anchor" href="#step-2-rank-candidate-auxiliary-traits"></a>
@@ -156,9 +156,9 @@ for the primary outcome.</p>
 <span><span class="va">ranking</span><span class="op">$</span><span class="va">abs_rho</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">ranking</span><span class="op">$</span><span class="va">rho</span><span class="op">)</span></span>
 <span><span class="va">ranking</span> <span class="op">&lt;-</span> <span class="va">ranking</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="op">-</span><span class="va">ranking</span><span class="op">$</span><span class="va">abs_rho</span><span class="op">)</span>, <span class="op">]</span></span>
 <span><span class="va">ranking</span></span>
-<span><span class="co">#&gt;               aux_trait rho p_value flag abs_rho</span></span>
-<span><span class="co">#&gt; aux_trait_1 aux_trait_1  NA      NA tau0      NA</span></span>
-<span><span class="co">#&gt; aux_trait_2 aux_trait_2  NA      NA tau0      NA</span></span></code></pre></div>
+<span><span class="co">#&gt;               aux_trait         rho       p_value flag    abs_rho</span></span>
+<span><span class="co">#&gt; aux_trait_1 aux_trait_1  0.62170790 1.024886e-116   OK 0.62170790</span></span>
+<span><span class="co">#&gt; aux_trait_2 aux_trait_2 -0.03630623  2.713419e-01   OK 0.03630623</span></span></code></pre></div>
 <p>The selected auxiliary trait can be taken as the candidate with the
 largest absolute coheterogeneity among those with acceptable diagnostic
 flags.</p>
@@ -205,13 +205,13 @@ auxiliary trait.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">dat_ibpresso</span> <span class="op">&lt;-</span> <span class="va">toy_ibmr_example</span><span class="op">$</span><span class="va">dat_ibpresso_aux1</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">dat_ibpresso</span><span class="op">)</span></span>
-<span><span class="co">#&gt;   beta_exposure se_exposure beta_primary se_primary    beta_aux se_aux</span></span>
-<span><span class="co">#&gt; 1    0.06879049        0.01  0.024371675       0.02 0.009380572   0.02</span></span>
-<span><span class="co">#&gt; 2    0.07539645        0.01  0.010366726       0.02 0.018450490   0.02</span></span>
-<span><span class="co">#&gt; 3    0.11117417        0.01  0.004073380       0.02 0.038306228   0.02</span></span>
-<span><span class="co">#&gt; 4    0.08141017        0.01  0.058358081       0.02 0.016712024   0.02</span></span>
-<span><span class="co">#&gt; 5    0.08258575        0.01  0.009041277       0.02 0.016210084   0.02</span></span>
-<span><span class="co">#&gt; 6    0.11430130        0.01  0.030819265       0.02 0.051580327   0.02</span></span></code></pre></div>
+<span><span class="co">#&gt;   beta_exposure se_exposure beta_primary se_primary   beta_aux se_aux</span></span>
+<span><span class="co">#&gt; 1    0.08879049       0.005  0.017732229      0.008 0.01965337  0.008</span></span>
+<span><span class="co">#&gt; 2    0.09539645       0.005 -0.021832887      0.008 0.01928450  0.008</span></span>
+<span><span class="co">#&gt; 3    0.13117417       0.005  0.015588900      0.008 0.02884544  0.008</span></span>
+<span><span class="co">#&gt; 4    0.10141017       0.005  0.003214524      0.008 0.04533534  0.008</span></span>
+<span><span class="co">#&gt; 5    0.10258575       0.005  0.093197322      0.008 0.08665289  0.008</span></span>
+<span><span class="co">#&gt; 6    0.13430130       0.005  0.012196435      0.008 0.01398760  0.008</span></span></code></pre></div>
 <p>The analysis can be run as follows.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ibpresso_res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/IBPRESSO.html">IBPRESSO</a></span><span class="op">(</span></span>
