@@ -184,7 +184,6 @@ toy_ibmr_example$recommended_auxiliary
 - optional SNP restriction through `SNP_keep`
 - weak-instrument filtering through `F_min`
 - small-exposure filtering through `bx_min`
-- optional winsorization through `winsor_theta`
 - pair-level diagnostic flags
 
 These are especially useful in large-scale screening settings where some traits

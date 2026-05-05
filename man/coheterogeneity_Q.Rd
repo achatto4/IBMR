@@ -15,11 +15,9 @@ coheterogeneity_Q(
   SNP_keep = NULL,
   use_ldsc = TRUE,
   alpha = 0.05,
-  step_mult = 0.001,
   eps = 1e-12,
   bx_min = 1e-06,
   F_min = 0,
-  winsor_theta = 20,
   min_K_pair = 50,
   return_diagnostics = FALSE
 )
@@ -60,9 +58,6 @@ method standard error.}
 
 \item{F_min}{Minimum first-stage F statistic threshold, where
 \code{F = (BetaXG / seBetaXG)^2}.}
-
-\item{winsor_theta}{Optional cap applied to ratio estimates to reduce
-instability from very small exposure effects. Set to \code{NULL} to disable.}
 
 \item{min_K_pair}{Minimum number of valid SNPs required for a trait pair.}
 
