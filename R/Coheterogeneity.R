@@ -120,6 +120,7 @@ coheterogeneity_Q <- function(
   rho_matrix <- matrix(NA_real_, J, J)
   se_matrix <- matrix(NA_real_, J, J)
   z_matrix <- matrix(NA_real_, J, J)
+  wald_matrix <- matrix(NA_real_, J, J)
   p_matrix <- matrix(NA_real_, J, J)
   K_matrix <- matrix(0L, J, J)
   flag_matrix <- matrix("", J, J)
@@ -128,6 +129,7 @@ coheterogeneity_Q <- function(
     dimnames(rho_matrix) <- list(colnames(BetaYG_matrix), colnames(BetaYG_matrix))
     dimnames(se_matrix) <- dimnames(rho_matrix)
     dimnames(z_matrix) <- dimnames(rho_matrix)
+    dimnames(wald_matrix) <- dimnames(rho_matrix)
     dimnames(p_matrix) <- dimnames(rho_matrix)
     dimnames(K_matrix) <- dimnames(rho_matrix)
     dimnames(flag_matrix) <- dimnames(rho_matrix)
@@ -435,8 +437,11 @@ coheterogeneity_Q <- function(
       }
 
       z <- out$rho / s
+      wald <- z^2
       pval <- 2 * pnorm(-abs(z))
+
       z_matrix[j, l] <- z_matrix[l, j] <- z
+      wald_matrix[j, l] <- wald_matrix[l, j] <- wald
       p_matrix[j, l] <- p_matrix[l, j] <- pval
 
       if (return_diagnostics) {
@@ -456,6 +461,7 @@ coheterogeneity_Q <- function(
   diag(rho_matrix) <- 1
   diag(se_matrix) <- 0
   diag(z_matrix) <- Inf
+  diag(wald_matrix) <- Inf
   diag(p_matrix) <- 0
   diag(flag_matrix) <- "diag"
 
