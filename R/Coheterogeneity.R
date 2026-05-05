@@ -1,9 +1,8 @@
-#' Calculate Coheterogeneity Using a Guarded Theoretical Method
+#' Calculate Coheterogeneity Using a Guarded Closed-Form Method
 #'
 #' Computes pairwise coheterogeneity correlations across multiple outcome traits
-#' using a guarded delta-exact approach. The implementation supports optional
-#' SNP filtering, weak-instrument filtering, winsorization of ratio estimates,
-#' LDSC intercept adjustment, and per-pair diagnostics.
+#' using the bias-corrected moment estimator and closed-form plug-in standard
+#' error described for instrument-borrowing Mendelian randomization.
 #'
 #' @param BetaXG Numeric vector of SNP-exposure associations.
 #' @param BetaYG_matrix Matrix of SNP-outcome associations, rows = SNPs,
@@ -16,26 +15,23 @@
 #' @param seBetaIV_matrix Matrix of standard errors for `BetaIV_matrix`. Used
 #'   to reconstruct `seBetaYG_matrix` when needed.
 #' @param ldsc_intercepts Optional matrix of LDSC intercepts used for pairwise
-#'   covariance adjustment.
+#'   outcome covariance adjustment.
 #' @param SNP_keep Optional logical or integer index vector specifying the SNPs
 #'   to retain.
 #' @param use_ldsc Logical; if `TRUE`, use `ldsc_intercepts` when supplied.
-#' @param alpha Significance level retained for interface compatibility.
-#' @param step_mult Scalar used to scale finite-difference steps for the delta
-#'   method standard error.
+#' @param alpha Significance level retained in the returned guard settings.
 #' @param eps Small positive constant used for numerical stabilization.
 #' @param bx_min Minimum absolute exposure effect size allowed.
 #' @param F_min Minimum first-stage F statistic threshold, where
 #'   `F = (BetaXG / seBetaXG)^2`.
-#' @param winsor_theta Optional cap applied to ratio estimates to reduce
-#'   instability from very small exposure effects. Set to `NULL` to disable.
 #' @param min_K_pair Minimum number of valid SNPs required for a trait pair.
 #' @param return_diagnostics Logical; if `TRUE`, include a diagnostics list.
 #'
 #' @return A list containing:
 #' \item{rho}{Pairwise coheterogeneity correlation matrix.}
-#' \item{se}{Pairwise standard error matrix for `rho`.}
+#' \item{se}{Pairwise closed-form standard error matrix for `rho`.}
 #' \item{z_statistic}{Pairwise z-statistic matrix.}
+#' \item{wald_statistic}{Pairwise Wald statistic matrix.}
 #' \item{p_value}{Pairwise p-value matrix.}
 #' \item{K}{Matrix of valid SNP counts per trait pair.}
 #' \item{flag}{Matrix of per-pair diagnostic flags.}
@@ -158,225 +154,128 @@ coheterogeneity_Q <- function(
     sebx <- sebx[ok]
     sey1 <- sey1[ok]
     sey2 <- sey2[ok]
-    Kp <- length(bx)
 
     vbx <- sebx^2
     bx2 <- bx^2 + eps
     bx4 <- bx2^2
 
-    th1 <- by1 / bx
-    th2 <- by2 / bx
+    theta1 <- by1 / bx
+    theta2 <- by2 / bx
 
-    if (!is.null(winsor_theta)) {
-      th1 <- pmax(pmin(th1, winsor_theta), -winsor_theta)
-      th2 <- pmax(pmin(th2, winsor_theta), -winsor_theta)
-      by1 <- th1 * bx
-      by2 <- th2 * bx
-    }
-
-    s1 <- (sey1^2) / bx2 + (by1^2) * vbx / bx4
-    s2 <- (sey2^2) / bx2 + (by2^2) * vbx / bx4
-
+    sigma1 <- (sey1^2) / bx2 + (by1^2) * vbx / bx4
+    sigma2 <- (sey2^2) / bx2 + (by2^2) * vbx / bx4
     cov_by12 <- I12 * sey1 * sey2
-    s12 <- cov_by12 / bx2 + (by1 * by2) * vbx / bx4
+    sigma12 <- cov_by12 / bx2 + (by1 * by2) * vbx / bx4
 
-    ok2 <- is.finite(s1) & is.finite(s2) & is.finite(s12) & s1 > 0 & s2 > 0
+    ok_sigma <- is.finite(theta1) & is.finite(theta2) &
+      is.finite(sigma1) & is.finite(sigma2) & is.finite(sigma12) &
+      sigma1 > 0 & sigma2 > 0
 
-    if (sum(ok2) < min_K_pair) {
-      return(list(rho = NA_real_, K = sum(ok2), flag = "bad sigma", cache = NULL))
+    if (sum(ok_sigma) < min_K_pair) {
+      return(list(rho = NA_real_, K = sum(ok_sigma), flag = "bad sigma", cache = NULL))
     }
 
-    bx_final <- bx[ok2]
-    by1_final <- by1[ok2]
-    by2_final <- by2[ok2]
-    sebx_final <- sebx[ok2]
-    sey1_final <- sey1[ok2]
-    sey2_final <- sey2[ok2]
-    th1 <- th1[ok2]
-    th2 <- th2[ok2]
-    s1 <- s1[ok2]
-    s2 <- s2[ok2]
-    s12 <- s12[ok2]
+    bx <- bx[ok_sigma]
+    by1 <- by1[ok_sigma]
+    by2 <- by2[ok_sigma]
+    sebx <- sebx[ok_sigma]
+    sey1 <- sey1[ok_sigma]
+    sey2 <- sey2[ok_sigma]
+    theta1 <- theta1[ok_sigma]
+    theta2 <- theta2[ok_sigma]
+    sigma1 <- sigma1[ok_sigma]
+    sigma2 <- sigma2[ok_sigma]
+    sigma12 <- sigma12[ok_sigma]
+    cov_by12 <- cov_by12[ok_sigma]
 
-    Kp <- length(th1)
-    w <- 1 / sqrt((s1 + eps) * (s2 + eps))
+    Kp <- length(theta1)
+    w <- 1 / sqrt((sigma1 + eps) * (sigma2 + eps))
     if (any(!is.finite(w)) || sum(w) <= 0) {
       return(list(rho = NA_real_, K = Kp, flag = "bad w", cache = NULL))
     }
     w <- w / sum(w)
 
-    d1 <- th1 - sum(w * th1)
-    d2 <- th2 - sum(w * th2)
+    delta1 <- theta1 - sum(w * theta1)
+    delta2 <- theta2 - sum(w * theta2)
 
-    M11 <- sum(w * d1^2)
-    M22 <- sum(w * d2^2)
-    M12 <- sum(w * d1 * d2)
+    C12 <- sum(w * (delta1 * delta2 - sigma12))
+    tau1_sq <- max(sum(w * (delta1^2 - sigma1)), 0)
+    tau2_sq <- max(sum(w * (delta2^2 - sigma2)), 0)
 
-    B11 <- sum(w * (1 - w) * s1)
-    B22 <- sum(w * (1 - w) * s2)
-    B12 <- sum(w * (1 - w) * s12)
-
-    S11 <- M11 - B11
-    S22 <- M22 - B22
-    S12 <- M12 - B12
-
-    if (!is.finite(S11) || !is.finite(S22)) {
-      return(list(rho = NA_real_, K = Kp, flag = "Sii nonfinite", cache = NULL))
+    if (!is.finite(C12) || !is.finite(tau1_sq) || !is.finite(tau2_sq)) {
+      return(list(rho = NA_real_, K = Kp, flag = "moment nonfinite", cache = NULL))
     }
 
-    if (S11 <= eps || S22 <= eps) {
+    if (tau1_sq <= eps || tau2_sq <= eps) {
       return(list(rho = NA_real_, K = Kp, flag = "tau0", cache = NULL))
     }
 
-    bound <- sqrt(S11 * S22)
-    S12c <- sign(S12) * min(abs(S12), bound)
+    tau1 <- sqrt(tau1_sq)
+    tau2 <- sqrt(tau2_sq)
+    bound <- tau1 * tau2
+    C12_clamped <- sign(C12) * min(abs(C12), bound)
+    rho <- C12_clamped / bound
 
-    rho <- S12c / bound
     if (!is.finite(rho)) {
       return(list(rho = NA_real_, K = Kp, flag = "rho nonfinite", cache = NULL))
     }
     rho <- max(-1, min(1, rho))
 
-    list(
-      rho = rho,
-      K = Kp,
-      flag = "OK",
-      cache = list(
-        bx = bx_final,
-        by1 = by1_final,
-        by2 = by2_final,
-        sebx = sebx_final,
-        sey1 = sey1_final,
-        sey2 = sey2_final,
-        I12 = I12
-      )
+    cache <- list(
+      bx = bx,
+      by1 = by1,
+      by2 = by2,
+      sebx = sebx,
+      sey1 = sey1,
+      sey2 = sey2,
+      cov_by12 = cov_by12,
+      theta1 = theta1,
+      theta2 = theta2,
+      delta1 = delta1,
+      delta2 = delta2,
+      w = w,
+      tau1 = tau1,
+      tau2 = tau2,
+      C12 = C12,
+      C12_clamped = C12_clamped,
+      I12 = I12
     )
+
+    list(rho = rho, K = Kp, flag = "OK", cache = cache)
   }
 
-  numeric_grad <- function(f, x, step) {
-    f0 <- f(x)
-    if (!is.finite(f0)) {
-      return(rep(NA_real_, length(x)))
-    }
+  se_closed_form <- function(cache, rho) {
+    bx <- cache$bx
+    by1 <- cache$by1
+    by2 <- cache$by2
+    sebx <- cache$sebx
+    sey1 <- cache$sey1
+    sey2 <- cache$sey2
+    cov_by12 <- cache$cov_by12
+    theta1 <- cache$theta1
+    theta2 <- cache$theta2
+    delta1 <- cache$delta1
+    delta2 <- cache$delta2
+    w <- cache$w
+    tau1 <- cache$tau1
+    tau2 <- cache$tau2
 
-    g <- numeric(length(x))
-    for (i in seq_along(x)) {
-      h <- step[i]
-      xp <- x
-      xm <- x
-      xp[i] <- xp[i] + h
-      xm[i] <- xm[i] - h
-      fp <- f(xp)
-      fm <- f(xm)
+    D1 <- delta1 - rho * (tau1 / tau2) * delta2
+    D2 <- delta2 - rho * (tau2 / tau1) * delta1
 
-      if (!is.finite(fp) || !is.finite(fm)) {
-        return(rep(NA_real_, length(x)))
-      }
-      g[i] <- (fp - fm) / (2 * h)
-    }
-    g
-  }
+    var_terms <- (theta1 * D2 + theta2 * D1)^2 * sebx^2 +
+      D2^2 * sey1^2 +
+      D1^2 * sey2^2 +
+      2 * D1 * D2 * cov_by12
 
-  se_delta_exact <- function(bx, by1, by2, sebx, sey1, sey2, I12) {
-    Kp <- length(bx)
-    if (Kp < 10) {
-      warning(sprintf("Only %d SNPs for SE estimation; unstable", Kp))
+    var_contrib <- ((w / bx)^2) * var_terms
+    var_rho <- sum(var_contrib) / (tau1^2 * tau2^2)
+
+    if (!is.finite(var_rho) || var_rho <= 0) {
       return(NA_real_)
     }
 
-    x <- c(bx, by1, by2)
-
-    f <- function(xx) {
-      bbx <- xx[1:Kp]
-      bby1 <- xx[(Kp + 1):(2 * Kp)]
-      bby2 <- xx[(2 * Kp + 1):(3 * Kp)]
-
-      vvbx <- sebx^2
-      bbx2 <- bbx^2 + eps
-      bbx4 <- bbx2^2
-
-      tth1 <- bby1 / bbx
-      tth2 <- bby2 / bbx
-
-      ss1 <- (sey1^2) / bbx2 + (bby1^2) * vvbx / bbx4
-      ss2 <- (sey2^2) / bbx2 + (bby2^2) * vvbx / bbx4
-      ss12 <- (I12 * sey1 * sey2) / bbx2 + (bby1 * bby2) * vvbx / bbx4
-
-      if (any(!is.finite(ss1)) || any(!is.finite(ss2)) ||
-          any(ss1 <= 0) || any(ss2 <= 0)) {
-        return(NA_real_)
-      }
-
-      ww <- 1 / sqrt((ss1 + eps) * (ss2 + eps))
-      if (any(!is.finite(ww)) || sum(ww) <= 0) {
-        return(NA_real_)
-      }
-      ww <- ww / sum(ww)
-
-      dd1 <- tth1 - sum(ww * tth1)
-      dd2 <- tth2 - sum(ww * tth2)
-
-      MM11 <- sum(ww * dd1^2)
-      MM22 <- sum(ww * dd2^2)
-      MM12 <- sum(ww * dd1 * dd2)
-
-      BB11 <- sum(ww * (1 - ww) * ss1)
-      BB22 <- sum(ww * (1 - ww) * ss2)
-      BB12 <- sum(ww * (1 - ww) * ss12)
-
-      SS11 <- MM11 - BB11
-      SS22 <- MM22 - BB22
-      SS12 <- MM12 - BB12
-
-      if (!is.finite(SS11) || !is.finite(SS22) || SS11 <= eps || SS22 <= eps) {
-        return(NA_real_)
-      }
-
-      bound <- sqrt(SS11 * SS22)
-      SS12c <- sign(SS12) * min(abs(SS12), bound)
-      rho_val <- SS12c / bound
-
-      if (!is.finite(rho_val)) {
-        return(NA_real_)
-      }
-      max(-1, min(1, rho_val))
-    }
-
-    step <- c(sebx, sey1, sey2) * step_mult
-    step[!is.finite(step) | step == 0] <- 1e-8
-
-    g <- numeric_grad(f, x, step)
-    if (any(!is.finite(g))) {
-      warning("Non-finite gradient in SE computation")
-      return(NA_real_)
-    }
-
-    cov_by12 <- I12 * sey1 * sey2
-    var <- 0
-
-    for (k in seq_len(Kp)) {
-      gk <- c(g[k], g[Kp + k], g[2 * Kp + k])
-      Ok <- matrix(c(
-        sebx[k]^2, 0, 0,
-        0, sey1[k]^2, cov_by12[k],
-        0, cov_by12[k], sey2[k]^2
-      ), 3, 3, byrow = TRUE)
-
-      var_k <- as.numeric(t(gk) %*% Ok %*% gk)
-      if (!is.finite(var_k)) {
-        warning(sprintf("Non-finite variance contribution at SNP %d", k))
-        return(NA_real_)
-      }
-      var <- var + var_k
-    }
-
-    se_val <- sqrt(max(var, 0))
-    if (!is.finite(se_val) || se_val <= 0) {
-      warning("Invalid final SE")
-      return(NA_real_)
-    }
-
-    se_val
+    sqrt(var_rho)
   }
 
   for (j in seq_len(J - 1)) {
@@ -407,28 +306,7 @@ coheterogeneity_Q <- function(
         next
       }
 
-      cache <- out$cache
-      if (is.null(cache) || is.null(cache$bx) || length(cache$bx) < min_K_pair) {
-        flag_matrix[j, l] <- flag_matrix[l, j] <- "cache invalid"
-        next
-      }
-
-      s <- tryCatch(
-        se_delta_exact(
-          bx = cache$bx,
-          by1 = cache$by1,
-          by2 = cache$by2,
-          sebx = cache$sebx,
-          sey1 = cache$sey1,
-          sey2 = cache$sey2,
-          I12 = cache$I12
-        ),
-        error = function(e) {
-          warning(sprintf("SE error for pair (%d,%d): %s", j, l, e$message))
-          NA_real_
-        }
-      )
-
+      s <- se_closed_form(out$cache, out$rho)
       se_matrix[j, l] <- se_matrix[l, j] <- s
 
       if (!is.finite(s) || s <= 0) {
@@ -451,8 +329,13 @@ coheterogeneity_Q <- function(
           rho = out$rho,
           se = s,
           z = z,
+          wald = wald,
           p = pval,
-          flag = out$flag
+          flag = out$flag,
+          C12 = out$cache$C12,
+          C12_clamped = out$cache$C12_clamped,
+          tau1 = out$cache$tau1,
+          tau2 = out$cache$tau2
         )
       }
     }
@@ -469,16 +352,15 @@ coheterogeneity_Q <- function(
     rho = rho_matrix,
     se = se_matrix,
     z_statistic = z_matrix,
+    wald_statistic = wald_matrix,
     p_value = p_matrix,
     K = K_matrix,
     flag = flag_matrix,
-    method = "theoretical_delta_exact_guarded",
+    method = "closed_form_coheterogeneity_guarded",
     guards = list(
       bx_min = bx_min,
       F_min = F_min,
-      winsor_theta = winsor_theta,
       min_K_pair = min_K_pair,
-      step_mult = step_mult,
       alpha = alpha
     )
   )

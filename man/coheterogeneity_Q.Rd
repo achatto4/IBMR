@@ -40,17 +40,14 @@ SNPs, columns = traits. Used to reconstruct \code{BetaYG_matrix} when needed.}
 to reconstruct \code{seBetaYG_matrix} when needed.}
 
 \item{ldsc_intercepts}{Optional matrix of LDSC intercepts used for pairwise
-covariance adjustment.}
+outcome covariance adjustment.}
 
 \item{SNP_keep}{Optional logical or integer index vector specifying the SNPs
 to retain.}
 
 \item{use_ldsc}{Logical; if \code{TRUE}, use \code{ldsc_intercepts} when supplied.}
 
-\item{alpha}{Significance level retained for interface compatibility.}
-
-\item{step_mult}{Scalar used to scale finite-difference steps for the delta
-method standard error.}
+\item{alpha}{Significance level retained in the returned guard settings.}
 
 \item{eps}{Small positive constant used for numerical stabilization.}
 
@@ -66,8 +63,9 @@ method standard error.}
 \value{
 A list containing:
 \item{rho}{Pairwise coheterogeneity correlation matrix.}
-\item{se}{Pairwise standard error matrix for \code{rho}.}
+\item{se}{Pairwise closed-form standard error matrix for \code{rho}.}
 \item{z_statistic}{Pairwise z-statistic matrix.}
+\item{wald_statistic}{Pairwise Wald statistic matrix.}
 \item{p_value}{Pairwise p-value matrix.}
 \item{K}{Matrix of valid SNP counts per trait pair.}
 \item{flag}{Matrix of per-pair diagnostic flags.}
@@ -77,7 +75,6 @@ A list containing:
 }
 \description{
 Computes pairwise coheterogeneity correlations across multiple outcome traits
-using a guarded delta-exact approach. The implementation supports optional
-SNP filtering, weak-instrument filtering, winsorization of ratio estimates,
-LDSC intercept adjustment, and per-pair diagnostics.
+using the bias-corrected moment estimator and closed-form plug-in standard
+error described for instrument-borrowing Mendelian randomization.
 }
