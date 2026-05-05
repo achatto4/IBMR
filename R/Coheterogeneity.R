@@ -55,16 +55,18 @@ coheterogeneity_Q <- function(
     SNP_keep = NULL,
     use_ldsc = TRUE,
     alpha = 0.05,
-    step_mult = 1e-3,
     eps = 1e-12,
     bx_min = 1e-6,
     F_min = 0,
-    winsor_theta = 20,
     min_K_pair = 50,
     return_diagnostics = FALSE
 ) {
   stopifnot(!is.null(BetaXG), !is.null(seBetaXG))
   K0 <- length(BetaXG)
+
+  if (length(seBetaXG) != K0) {
+    stop("seBetaXG must have the same length as BetaXG.")
+  }
 
   if (is.null(SNP_keep)) {
     SNP_keep <- rep(TRUE, K0)
@@ -94,13 +96,22 @@ coheterogeneity_Q <- function(
     seBetaYG_matrix <- as.matrix(seBetaYG_matrix)
   }
 
+  if (nrow(BetaYG_matrix) != K0 || nrow(seBetaYG_matrix) != K0) {
+    stop("Outcome matrices must have one row per SNP in BetaXG.")
+  }
+  if (!all(dim(BetaYG_matrix) == dim(seBetaYG_matrix))) {
+    stop("BetaYG_matrix and seBetaYG_matrix must have the same dimensions.")
+  }
+
   BetaXG <- BetaXG[SNP_keep]
   seBetaXG <- seBetaXG[SNP_keep]
   BetaYG_matrix <- BetaYG_matrix[SNP_keep, , drop = FALSE]
   seBetaYG_matrix <- seBetaYG_matrix[SNP_keep, , drop = FALSE]
 
-  K <- length(BetaXG)
   J <- ncol(BetaYG_matrix)
+  if (J < 2) {
+    stop("At least two outcome traits are required.")
+  }
 
   Fstat <- (BetaXG / seBetaXG)^2
   ok_x <- is.finite(BetaXG) & is.finite(seBetaXG) & seBetaXG > 0 &
