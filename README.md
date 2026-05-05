@@ -130,12 +130,14 @@ interpretation of outputs, and downstream workflow.
 
 ### `coheterogeneity_Q()`
 
-Computes pairwise coheterogeneity across traits using a guarded theoretical
-delta-exact method. The returned object includes:
+Computes pairwise coheterogeneity across traits using the guarded
+bias-corrected moment estimator with a closed-form plug-in standard error. The
+returned object includes:
 
 - `rho`
 - `se`
 - `z_statistic`
+- `wald_statistic`
 - `p_value`
 - `K`
 - `flag`

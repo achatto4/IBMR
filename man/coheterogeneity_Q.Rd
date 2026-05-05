@@ -2,7 +2,7 @@
 % Please edit documentation in R/Coheterogeneity.R
 \name{coheterogeneity_Q}
 \alias{coheterogeneity_Q}
-\title{Calculate Coheterogeneity Using a Guarded Theoretical Method}
+\title{Calculate Coheterogeneity Using a Guarded Closed-Form Method}
 \usage{
 coheterogeneity_Q(
   BetaXG,
