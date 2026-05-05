@@ -23,8 +23,9 @@ A small simulated summary-statistics example illustrating the intended
 auxiliary outcomes.
 }
 \details{
-The data were simulated so that \code{aux_trait_1} shares more structure with
-the primary outcome than \code{aux_trait_2}, making it the more natural
-auxiliary trait for instrument borrowing in the example workflow.
+The data were simulated so that \code{aux_trait_1} shares a moderate latent
+heterogeneity component with the primary outcome, whereas \code{aux_trait_2} is
+much less aligned. This makes \code{aux_trait_1} the more natural auxiliary
+trait for instrument borrowing in the example workflow.
 }
 \keyword{datasets}
