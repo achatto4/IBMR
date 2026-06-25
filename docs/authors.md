@@ -7,7 +7,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/achatto4/IBMR/blob/HEAD/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/achatto4/IBMR/blob/main/DESCRIPTION)
 
 Chattopadhyay A (2026). *IBMR: Instrument Borrowing for Mendelian
 Randomization*. R package version 0.1.1,

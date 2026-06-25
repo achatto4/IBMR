@@ -19,6 +19,7 @@ pipeline.
 ## Load the Toy Example
 
 ``` r
+
 data("toy_ibmr_example")
 
 BetaXG <- toy_ibmr_example$BetaXG
@@ -36,6 +37,7 @@ more informative auxiliary trait for the primary outcome.
 ## Step 1: Screen Auxiliary Traits with Coheterogeneity
 
 ``` r
+
 cohet_res <- coheterogeneity_Q(
   BetaXG = BetaXG,
   BetaYG_matrix = BetaYG_matrix,
@@ -65,6 +67,7 @@ cohet_res$flag
 We focus on the row corresponding to the primary outcome.
 
 ``` r
+
 rho_primary <- cohet_res$rho[primary_name, ]
 p_primary <- cohet_res$p_value[primary_name, ]
 flag_primary <- cohet_res$flag[primary_name, ]
@@ -83,6 +86,7 @@ flag_primary
 ## Step 2: Rank Candidate Auxiliary Traits
 
 ``` r
+
 ranking <- data.frame(
   aux_trait = candidate_aux,
   rho = rho_primary[candidate_aux],
@@ -104,6 +108,7 @@ largest absolute coheterogeneity among those with acceptable diagnostic
 flags.
 
 ``` r
+
 chosen_aux <- ranking$aux_trait[1]
 chosen_aux
 #> [1] "aux_trait_1"
@@ -112,6 +117,7 @@ chosen_aux
 For the packaged toy example, the intended selected auxiliary trait is:
 
 ``` r
+
 toy_ibmr_example$recommended_auxiliary
 #> [1] "aux_trait_1"
 ```
@@ -122,6 +128,7 @@ Once the auxiliary trait has been selected, we subset the outcome
 matrices to the primary outcome and the chosen auxiliary trait.
 
 ``` r
+
 BetaYG_mode <- BetaYG_matrix[, c(primary_name, chosen_aux), drop = FALSE]
 seBetaYG_mode <- seBetaYG_matrix[, c(primary_name, chosen_aux), drop = FALSE]
 ```
@@ -130,6 +137,7 @@ We then run
 [`IBMODE()`](https://achatto4.github.io/IBMR/reference/IBMODE.md).
 
 ``` r
+
 ibmode_res <- IBMODE(
   BetaXG = BetaXG,
   BetaYG_matrix = BetaYG_mode,
@@ -162,6 +170,7 @@ expects a data frame rather than matrices. The toy dataset includes a
 ready-made example for the recommended auxiliary trait.
 
 ``` r
+
 dat_ibpresso <- toy_ibmr_example$dat_ibpresso_aux1
 head(dat_ibpresso)
 #>   beta_exposure se_exposure beta_primary se_primary   beta_aux se_aux
@@ -176,6 +185,7 @@ head(dat_ibpresso)
 The analysis can be run as follows.
 
 ``` r
+
 ibpresso_res <- IBPRESSO(
   BetaOutcome = "beta_primary",
   BetaExposure = "beta_exposure",
