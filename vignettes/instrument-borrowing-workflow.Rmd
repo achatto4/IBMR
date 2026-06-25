@@ -123,7 +123,8 @@ ibmode_res <- IBMODE(
   seBetaXG = seBetaXG,
   seBetaYG_matrix = seBetaYG_mode,
   phi = c(1, 0.5),
-  n_boot = 200
+  n_boot = 200,
+  seed = 123
 )
 
 ibmode_res
@@ -131,7 +132,13 @@ ibmode_res
 
 This returns joint mode-based estimates for the primary and auxiliary outcomes.
 In routine analyses, the number of bootstrap replicates should be chosen to
-balance computational cost and stability.
+balance computational cost and stability, and `seed` set for reproducibility.
+
+When the primary and auxiliary outcome GWAS share samples, the per-instrument
+ratio estimates are correlated across the two traits. In that case, pass the
+cross-trait LD-score regression intercept via `ldsc_intercept` (or a precomputed
+per-SNP `cov_ratio`) so that the bootstrap is drawn from the appropriate bivariate
+distribution; this yields correctly calibrated standard errors under sample overlap.
 
 # Step 4: Run `IBPRESSO()`
 

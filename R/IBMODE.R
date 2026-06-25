@@ -11,6 +11,15 @@
 #' @param phi Numeric vector of bandwidth multipliers for sensitivity analysis (default: c(1, 0.5, 0.25))
 #' @param n_boot Integer, number of bootstrap iterations for standard error estimation (default: 10000)
 #' @param alpha Numeric, significance level for confidence intervals (default: 0.05)
+#' @param cov_ratio Optional numeric vector of per-instrument cross-trait covariances of
+#'   the ratio estimates (sigma_{12,k}); when supplied (or derived from \code{ldsc_intercept}),
+#'   the bootstrap draws each instrument's outcome pair jointly from a bivariate normal,
+#'   accounting for correlation induced by overlapping outcome GWAS samples. \code{NULL}
+#'   (default) or all-zero gives the independent bootstrap. Two-outcome analyses only.
+#' @param ldsc_intercept Optional scalar cross-trait LD-score regression intercept for the
+#'   (primary, auxiliary) pair; if \code{cov_ratio} is \code{NULL} and this is supplied,
+#'   \code{cov_ratio} is formed internally.
+#' @param seed Optional integer random seed for a reproducible bootstrap (default: \code{NULL}).
 #'
 #' @return A data frame containing:
 #' \item{Method}{Method name}
@@ -24,7 +33,9 @@
 #' @details
 #' The function uses weighted multidimensional kernel density estimation to find the
 #' mode of the joint distribution of causal effects across multiple outcomes. Bootstrap
-#' resampling is used to estimate standard errors. Multiple bandwidth parameters (phi)
+#' resampling is used to estimate standard errors; when the primary and auxiliary outcome
+#' GWAS share samples, supply \code{cov_ratio} (or \code{ldsc_intercept}) so the bootstrap
+#' is drawn from the appropriate bivariate distribution. Multiple bandwidth parameters (phi)
 #' can be tested for sensitivity analysis.
 #'
 #' @importFrom ks kde
@@ -37,7 +48,10 @@ IBMODE <- function(BetaXG,
                            seBetaYG_matrix,
                            phi = c(1, 0.5, 0.25),
                            n_boot = 1e4,
-                           alpha = 0.05) {
+                           alpha = 0.05,
+                           cov_ratio = NULL,
+                           ldsc_intercept = NULL,
+                           seed = NULL) {
 
   # Check if ks package is available
   if (!requireNamespace("ks", quietly = TRUE)) {
@@ -105,17 +119,38 @@ IBMODE <- function(BetaXG,
   #------------------------------------------#
   # Function to estimate SEs through bootstrap
   #------------------------------------------#
-  bootstrap_estimates <- function(BetaIV_matrix, seBetaIV_matrix) {
+  bootstrap_estimates <- function(BetaIV_matrix, seBetaIV_matrix, cov_ratio = NULL) {
 
     beta_boot <- array(NA, dim = c(n_boot, length(phi), n_outcomes))
 
+    # When the two outcome GWAS share samples, each instrument's pair of ratio
+    # estimates is correlated across outcomes. For a two-outcome (primary + auxiliary)
+    # analysis we draw the pair jointly from a bivariate normal with covariance
+    # cov_ratio (= sigma_{12,k}) via its Cholesky factor; cov_ratio == 0 (or NULL)
+    # reduces to the original independent redrawing.
+    use_cov <- n_outcomes == 2 && !is.null(cov_ratio) && any(cov_ratio != 0, na.rm = TRUE)
+    if (use_cov) {
+      sd1  <- seBetaIV_matrix[, 1]
+      sd2  <- seBetaIV_matrix[, 2]
+      rmax <- 0.999  # clamp correlation to keep each 2x2 block positive-definite
+      c12  <- pmax(pmin(cov_ratio, rmax * sd1 * sd2), -rmax * sd1 * sd2)
+      L21  <- c12 / sd1                       # Cholesky of [[sd1^2, c12], [c12, sd2^2]]
+      L22  <- sqrt(pmax(sd2^2 - L21^2, 0))
+    }
+
     for (i in 1:n_boot) {
-      # Bootstrap: sample from normal distribution for each SNP-outcome pair
-      BetaIV_boot <- matrix(NA, nrow = n_snps, ncol = n_outcomes)
-      for (j in 1:n_outcomes) {
-        BetaIV_boot[, j] <- rnorm(n_snps,
-                                  mean = BetaIV_matrix[, j],
-                                  sd = seBetaIV_matrix[, j])
+      if (use_cov) {
+        z1 <- rnorm(n_snps); z2 <- rnorm(n_snps)
+        BetaIV_boot <- cbind(BetaIV_matrix[, 1] + sd1 * z1,
+                             BetaIV_matrix[, 2] + L21 * z1 + L22 * z2)
+      } else {
+        # Sample each outcome independently (no outcome overlap)
+        BetaIV_boot <- matrix(NA, nrow = n_snps, ncol = n_outcomes)
+        for (j in 1:n_outcomes) {
+          BetaIV_boot[, j] <- rnorm(n_snps,
+                                    mean = BetaIV_matrix[, j],
+                                    sd = seBetaIV_matrix[, j])
+        }
       }
 
       # Compute mode estimate for bootstrap sample
@@ -138,12 +173,22 @@ IBMODE <- function(BetaXG,
       (BetaYG_matrix^2 * seBetaXG^2) / (BetaXG^4)
   )
 
+  # Cross-trait covariance of the ratio estimates (0 unless the outcome GWAS overlap).
+  # If an LDSC intercept is supplied for a two-outcome (primary + auxiliary) analysis,
+  # form sigma_{12,k} = I12 * seY1 seY2 / bx^2 + bY1 bY2 seX^2 / bx^4.
+  if (is.null(cov_ratio) && !is.null(ldsc_intercept) && n_outcomes == 2) {
+    bx2 <- BetaXG^2
+    cov_ratio <- ldsc_intercept * seBetaYG_matrix[, 1] * seBetaYG_matrix[, 2] / bx2 +
+      BetaYG_matrix[, 1] * BetaYG_matrix[, 2] * seBetaXG^2 / (bx2^2)
+  }
+
   # Point estimates
   beta_MBE <- compute_mode_estimate(BetaIV_matrix, seBetaIV_matrix)
 
   # Bootstrap for standard errors
+  if (!is.null(seed)) set.seed(seed)
   message(paste0("Running ", n_boot, " bootstrap iterations..."))
-  beta_MBE_boot <- bootstrap_estimates(BetaIV_matrix, seBetaIV_matrix)
+  beta_MBE_boot <- bootstrap_estimates(BetaIV_matrix, seBetaIV_matrix, cov_ratio)
 
   # Compute statistics for each outcome
   se_MBE <- matrix(NA, nrow = length(phi), ncol = n_outcomes)

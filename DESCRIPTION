@@ -1,6 +1,6 @@
 Package: IBMR
 Title: Instrument Borrowing for Mendelian Randomization
-Version: 0.1.0
+Version: 0.1.1
 Authors@R: 
     person("Anagh", "Chattopadhyay", 
            email = "achatto4@jh.edu", 

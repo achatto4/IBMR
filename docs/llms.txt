@@ -39,7 +39,6 @@ package:
 Install the package from GitHub with:
 
 ``` r
-
 install.packages("devtools")
 library(devtools)
 devtools::install_github("achatto4/IBMR")
@@ -49,7 +48,6 @@ library(IBMR)
 ## Minimal Example
 
 ``` r
-
 library(IBMR)
 data("toy_ibmr_example")
 

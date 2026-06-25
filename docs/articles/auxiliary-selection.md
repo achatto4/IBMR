@@ -39,7 +39,6 @@ In the common screening setting, the columns of `BetaYG_matrix` are:
 The package includes a toy dataset called `toy_ibmr_example`.
 
 ``` r
-
 data("toy_ibmr_example")
 
 names(toy_ibmr_example)
@@ -67,7 +66,6 @@ The simulation is deliberately simple. It was constructed so that
 example.
 
 ``` r
-
 str(toy_ibmr_example$simulation_setup)
 #> List of 14
 #>  $ seed                        : num 123
@@ -91,7 +89,6 @@ str(toy_ibmr_example$simulation_setup)
 We begin by extracting the summary-statistics objects.
 
 ``` r
-
 BetaXG <- toy_ibmr_example$BetaXG
 seBetaXG <- toy_ibmr_example$seBetaXG
 BetaYG_matrix <- toy_ibmr_example$BetaYG_matrix
@@ -105,7 +102,6 @@ We now compute coheterogeneity across the primary outcome and the
 candidate auxiliary traits.
 
 ``` r
-
 cohet_res <- coheterogeneity_Q(
   BetaXG = BetaXG,
   BetaYG_matrix = BetaYG_matrix,
@@ -124,7 +120,6 @@ The principal outputs are:
 - `K`: number of SNPs contributing to each pairwise calculation
 
 ``` r
-
 round(cohet_res$rho, 3)
 #>               primary_trait aux_trait_1 aux_trait_2
 #> primary_trait         1.000       0.622      -0.036
@@ -154,7 +149,6 @@ quantities of primary interest are the off-diagonal entries involving
 the primary outcome.
 
 ``` r
-
 primary_name <- toy_ibmr_example$primary_trait
 cohet_res$rho[primary_name, ]
 #> primary_trait   aux_trait_1   aux_trait_2 
@@ -190,7 +184,6 @@ The screening step is usually carried out by ranking candidate
 auxiliaries for the primary outcome.
 
 ``` r
-
 ranking <- data.frame(
   aux_trait = colnames(cohet_res$rho),
   rho = cohet_res$rho[primary_name, ],
@@ -218,7 +211,6 @@ A practical selection rule is:
 In this toy dataset, the intended selected auxiliary trait is:
 
 ``` r
-
 toy_ibmr_example$recommended_auxiliary
 #> [1] "aux_trait_1"
 ```

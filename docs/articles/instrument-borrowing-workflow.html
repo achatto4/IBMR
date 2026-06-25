@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">IBMR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -57,7 +57,7 @@
       <h1>Instrument Borrowing Workflow</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/achatto4/IBMR/blob/main/vignettes/instrument-borrowing-workflow.Rmd" class="external-link"><code>vignettes/instrument-borrowing-workflow.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/achatto4/IBMR/blob/HEAD/vignettes/instrument-borrowing-workflow.Rmd" class="external-link"><code>vignettes/instrument-borrowing-workflow.Rmd</code></a></small>
       <div class="d-none name"><code>instrument-borrowing-workflow.Rmd</code></div>
     </div>
 
@@ -188,13 +188,22 @@ matrices to the primary outcome and the chosen auxiliary trait.</p>
 <span>  seBetaXG <span class="op">=</span> <span class="va">seBetaXG</span>,</span>
 <span>  seBetaYG_matrix <span class="op">=</span> <span class="va">seBetaYG_mode</span>,</span>
 <span>  phi <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0.5</span><span class="op">)</span>,</span>
-<span>  n_boot <span class="op">=</span> <span class="fl">200</span></span>
+<span>  n_boot <span class="op">=</span> <span class="fl">200</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">123</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">ibmode_res</span></span></code></pre></div>
 <p>This returns joint mode-based estimates for the primary and auxiliary
 outcomes. In routine analyses, the number of bootstrap replicates should
-be chosen to balance computational cost and stability.</p>
+be chosen to balance computational cost and stability, and
+<code>seed</code> set for reproducibility.</p>
+<p>When the primary and auxiliary outcome GWAS share samples, the
+per-instrument ratio estimates are correlated across the two traits. In
+that case, pass the cross-trait LD-score regression intercept via
+<code>ldsc_intercept</code> (or a precomputed per-SNP
+<code>cov_ratio</code>) so that the bootstrap is drawn from the
+appropriate bivariate distribution; this yields correctly calibrated
+standard errors under sample overlap.</p>
 </div>
 <div class="section level2">
 <h2 id="step-4-run-ibpresso">Step 4: Run <code>IBPRESSO()</code><a class="anchor" aria-label="anchor" href="#step-4-run-ibpresso"></a>

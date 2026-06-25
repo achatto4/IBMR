@@ -11,7 +11,10 @@ IBMODE(
   seBetaYG_matrix,
   phi = c(1, 0.5, 0.25),
   n_boot = 10000,
-  alpha = 0.05
+  alpha = 0.05,
+  cov_ratio = NULL,
+  ldsc_intercept = NULL,
+  seed = NULL
 )
 }
 \arguments{
@@ -28,6 +31,18 @@ IBMODE(
 \item{n_boot}{Integer, number of bootstrap iterations for standard error estimation (default: 10000)}
 
 \item{alpha}{Numeric, significance level for confidence intervals (default: 0.05)}
+
+\item{cov_ratio}{Optional numeric vector of per-instrument cross-trait covariances of
+the ratio estimates (sigma_{12,k}); when supplied (or derived from \code{ldsc_intercept}),
+the bootstrap draws each instrument's outcome pair jointly from a bivariate normal,
+accounting for correlation induced by overlapping outcome GWAS samples. \code{NULL}
+(default) or all-zero gives the independent bootstrap. Two-outcome analyses only.}
+
+\item{ldsc_intercept}{Optional scalar cross-trait LD-score regression intercept for the
+(primary, auxiliary) pair; if \code{cov_ratio} is \code{NULL} and this is supplied,
+\code{cov_ratio} is formed internally.}
+
+\item{seed}{Optional integer random seed for a reproducible bootstrap (default: \code{NULL}).}
 }
 \value{
 A data frame containing:
@@ -47,6 +62,8 @@ causal effect across multiple traits while accounting for pleiotropy.
 \details{
 The function uses weighted multidimensional kernel density estimation to find the
 mode of the joint distribution of causal effects across multiple outcomes. Bootstrap
-resampling is used to estimate standard errors. Multiple bandwidth parameters (phi)
+resampling is used to estimate standard errors; when the primary and auxiliary outcome
+GWAS share samples, supply \code{cov_ratio} (or \code{ldsc_intercept}) so the bootstrap
+is drawn from the appropriate bivariate distribution. Multiple bandwidth parameters (phi)
 can be tested for sensitivity analysis.
 }

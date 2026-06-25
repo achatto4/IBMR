@@ -11,7 +11,7 @@ causal effect across multiple traits while accounting for pleiotropy."></head><b
 
     <a class="navbar-brand me-2" href="../index.html">IBMR</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -36,7 +36,7 @@ causal effect across multiple traits while accounting for pleiotropy."></head><b
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Multidimensional Mode-Based Estimation for Mendelian Randomization</h1>
-      <small class="dont-index">Source: <a href="https://github.com/achatto4/IBMR/blob/main/R/IBMODE.R" class="external-link"><code>R/IBMODE.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/achatto4/IBMR/blob/HEAD/R/IBMODE.R" class="external-link"><code>R/IBMODE.R</code></a></small>
       <div class="d-none name"><code>IBMODE.Rd</code></div>
     </div>
 
@@ -55,7 +55,10 @@ causal effect across multiple traits while accounting for pleiotropy.</p>
 <span>  <span class="va">seBetaYG_matrix</span>,</span>
 <span>  phi <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0.5</span>, <span class="fl">0.25</span><span class="op">)</span>,</span>
 <span>  n_boot <span class="op">=</span> <span class="fl">10000</span>,</span>
-<span>  alpha <span class="op">=</span> <span class="fl">0.05</span></span>
+<span>  alpha <span class="op">=</span> <span class="fl">0.05</span>,</span>
+<span>  cov_ratio <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  ldsc_intercept <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  seed <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -90,6 +93,24 @@ causal effect across multiple traits while accounting for pleiotropy.</p>
 <dt id="arg-alpha">alpha<a class="anchor" aria-label="anchor" href="#arg-alpha"></a></dt>
 <dd><p>Numeric, significance level for confidence intervals (default: 0.05)</p></dd>
 
+
+<dt id="arg-cov-ratio">cov_ratio<a class="anchor" aria-label="anchor" href="#arg-cov-ratio"></a></dt>
+<dd><p>Optional numeric vector of per-instrument cross-trait covariances of
+the ratio estimates (sigma_12,k); when supplied (or derived from <code>ldsc_intercept</code>),
+the bootstrap draws each instrument's outcome pair jointly from a bivariate normal,
+accounting for correlation induced by overlapping outcome GWAS samples. <code>NULL</code>
+(default) or all-zero gives the independent bootstrap. Two-outcome analyses only.</p></dd>
+
+
+<dt id="arg-ldsc-intercept">ldsc_intercept<a class="anchor" aria-label="anchor" href="#arg-ldsc-intercept"></a></dt>
+<dd><p>Optional scalar cross-trait LD-score regression intercept for the
+(primary, auxiliary) pair; if <code>cov_ratio</code> is <code>NULL</code> and this is supplied,
+<code>cov_ratio</code> is formed internally.</p></dd>
+
+
+<dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
+<dd><p>Optional integer random seed for a reproducible bootstrap (default: <code>NULL</code>).</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -120,7 +141,9 @@ causal effect across multiple traits while accounting for pleiotropy.</p>
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>The function uses weighted multidimensional kernel density estimation to find the
 mode of the joint distribution of causal effects across multiple outcomes. Bootstrap
-resampling is used to estimate standard errors. Multiple bandwidth parameters (phi)
+resampling is used to estimate standard errors; when the primary and auxiliary outcome
+GWAS share samples, supply <code>cov_ratio</code> (or <code>ldsc_intercept</code>) so the bootstrap
+is drawn from the appropriate bivariate distribution. Multiple bandwidth parameters (phi)
 can be tested for sensitivity analysis.</p>
     </div>
 

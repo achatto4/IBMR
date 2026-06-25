@@ -57,8 +57,7 @@ SE that propagates the data-dependence of the weights), or \code{"both"}
 
 \item{grad_rel_step}{Numeric; relative finite-difference step used by the
 random-weight numerical SE, expressed as a multiple of each association's
-standard error. Only used when \code{se_weights} is \code{"random"} or
-\code{"both"}.}
+standard error. Only used when \code{se_weights} is \code{"random"} or \code{"both"}.}
 
 \item{alpha}{Significance level retained in the returned guard settings.}
 
@@ -77,8 +76,8 @@ standard error. Only used when \code{se_weights} is \code{"random"} or
 A list containing:
 \item{rho}{Pairwise coheterogeneity correlation matrix.}
 \item{se}{Pairwise standard error matrix for \code{rho}, computed with the
-primary weighting (\code{"fixed"} for \code{se_weights} \code{"fixed"} or
-\code{"both"}, \code{"random"} for \code{se_weights} \code{"random"}).}
+primary weighting (\code{"fixed"} for \code{se_weights} \code{"fixed"} or \code{"both"},
+\code{"random"} for \code{se_weights} \code{"random"}).}
 \item{z_statistic}{Pairwise z-statistic matrix for the primary SE.}
 \item{wald_statistic}{Pairwise Wald statistic matrix for the primary SE.}
 \item{p_value}{Pairwise p-value matrix for the primary SE.}
@@ -100,13 +99,13 @@ randomization. The standard error of the estimate can be obtained two ways:
 }
 \details{
 \describe{
-  \item{\code{"fixed"}}{The closed-form plug-in SE (Theorem 1). The
-    inverse-variance weights are treated as fixed (non-random) when the
-    estimator is linearized. This is the original, computationally cheap SE.}
-  \item{\code{"random"}}{A numerical delta-method SE that differentiates the
-    estimator through the data-dependent inverse-variance weights, i.e. the
-    weights are treated as random (estimated). This is the exact first-order
-    SE; the closed form omits the weight-estimation term.}
+\item{\code{"fixed"}}{The closed-form plug-in SE (Theorem 1). The
+inverse-variance weights are treated as fixed (non-random) when the
+estimator is linearized. This is the original, computationally cheap SE.}
+\item{\code{"random"}}{A numerical delta-method SE that differentiates the
+estimator through the data-dependent inverse-variance weights, i.e. the
+weights are treated as random (estimated). This is the exact first-order
+SE; the closed form omits the weight-estimation term.}
 }
 
 The two coincide when the per-SNP ratios are homogeneous and diverge as the

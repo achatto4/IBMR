@@ -1,10 +1,10 @@
-pandoc: 3.8.3
+pandoc: 3.1.11
 pkgdown: 2.2.0
 pkgdown_sha: ~
 articles:
   auxiliary-selection: auxiliary-selection.html
   instrument-borrowing-workflow: instrument-borrowing-workflow.html
-last_built: 2026-06-09T16:20Z
+last_built: 2026-06-25T15:55Z
 urls:
   reference: https://achatto4.github.io/IBMR/reference
   article: https://achatto4.github.io/IBMR/articles
