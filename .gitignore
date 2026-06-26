@@ -4,3 +4,7 @@
 .Ruserdata
 *.Rproj
 .DS_Store
+
+# pkgdown site is built and deployed by CI (.github/workflows/pkgdown.yaml);
+# the rendered site is no longer tracked in the repo.
+/docs/

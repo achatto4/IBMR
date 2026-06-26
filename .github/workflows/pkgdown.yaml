@@ -3,24 +3,27 @@ name: pkgdown
 on:
   push:
     branches: [main, master]
-    paths-ignore:
-      - docs/**
   workflow_dispatch:
 
+# Deploy the rendered site straight to GitHub Pages from a build artifact.
+# No docs/ is committed back to the branch (avoids merge conflicts), and a
+# single queued deployment avoids "deployment cancelled" races.
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  pkgdown:
-    if: github.actor != 'github-actions[bot]'
+  build:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - uses: r-lib/actions/setup-pandoc@v2
 
@@ -30,26 +33,25 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          extra-packages: any::pkgdown
+          extra-packages: any::pkgdown, local::.
           needs: website
 
-      - name: Install package
-        run: R CMD INSTALL .
-
-      - name: Clean existing site
-        run: Rscript -e 'pkgdown::clean_site(force = TRUE)'
-
       - name: Build pkgdown site
-        run: Rscript -e 'pkgdown::build_site(new_process = FALSE, install = FALSE)'
+        run: pkgdown::build_site_github_pages(new_process = FALSE, install = FALSE)
+        shell: Rscript {0}
 
-      - name: Show generated site files
-        run: find docs -maxdepth 3 -type f | sort
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
 
-      - name: Commit and push rendered site
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A docs
-          git diff --cached --quiet && exit 0
-          git commit -m "Build pkgdown site"
-          git push
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
