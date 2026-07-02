@@ -33,7 +33,7 @@ IBMODE(
 \item{alpha}{Numeric, significance level for confidence intervals (default: 0.05)}
 
 \item{cov_ratio}{Optional numeric vector of per-instrument cross-trait covariances of
-the ratio estimates (sigma_{12,k}); when supplied (or derived from \code{ldsc_intercept}),
+the ratio estimates (\eqn{\sigma_{12,k}}); when supplied (or derived from \code{ldsc_intercept}),
 the bootstrap draws each instrument's outcome pair jointly from a bivariate normal,
 accounting for correlation induced by overlapping outcome GWAS samples. \code{NULL}
 (default) or all-zero gives the independent bootstrap. Two-outcome analyses only.}

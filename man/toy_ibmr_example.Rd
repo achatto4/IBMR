@@ -1,5 +1,6 @@
 % Generated manually to match R/data.R
 \name{toy_ibmr_example}
+\alias{toy_ibmr_example}
 \docType{data}
 \title{Toy Summary-Statistics Example for IBMR}
 \format{

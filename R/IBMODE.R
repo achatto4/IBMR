@@ -12,7 +12,7 @@
 #' @param n_boot Integer, number of bootstrap iterations for standard error estimation (default: 10000)
 #' @param alpha Numeric, significance level for confidence intervals (default: 0.05)
 #' @param cov_ratio Optional numeric vector of per-instrument cross-trait covariances of
-#'   the ratio estimates (sigma_{12,k}); when supplied (or derived from \code{ldsc_intercept}),
+#'   the ratio estimates (\eqn{\sigma_{12,k}}); when supplied (or derived from \code{ldsc_intercept}),
 #'   the bootstrap draws each instrument's outcome pair jointly from a bivariate normal,
 #'   accounting for correlation induced by overlapping outcome GWAS samples. \code{NULL}
 #'   (default) or all-zero gives the independent bootstrap. Two-outcome analyses only.

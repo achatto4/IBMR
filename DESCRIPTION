@@ -1,6 +1,6 @@
 Package: IBMR
 Title: Instrument Borrowing for Mendelian Randomization
-Version: 0.1.1
+Version: 0.1.2
 Authors@R: 
     person("Anagh", "Chattopadhyay", 
            email = "achatto4@jh.edu", 
@@ -16,7 +16,8 @@ RoxygenNote: 7.3.3
 Imports:
     MASS,
     ks,
-    stats
+    stats,
+    utils
 Suggests:
     knitr,
     pkgdown,

@@ -2,7 +2,7 @@
 % Please edit documentation in R/Coheterogeneity.R
 \name{coheterogeneity_Q}
 \alias{coheterogeneity_Q}
-\title{Calculate Coheterogeneity with Fixed- or Random-Weight Standard Errors}
+\title{Calculate Coheterogeneity with Full-Gradient (or Custom-Weight) Standard Errors}
 \usage{
 coheterogeneity_Q(
   BetaXG,
@@ -14,7 +14,7 @@ coheterogeneity_Q(
   ldsc_intercepts = NULL,
   SNP_keep = NULL,
   use_ldsc = TRUE,
-  se_weights = c("fixed", "random", "both"),
+  weights = NULL,
   grad_rel_step = 0.001,
   alpha = 0.05,
   eps = 1e-12,
@@ -49,15 +49,15 @@ to retain.}
 
 \item{use_ldsc}{Logical; if \code{TRUE}, use \code{ldsc_intercepts} when supplied.}
 
-\item{se_weights}{Character; how the inverse-variance weights are treated
-when computing the standard error. One of \code{"fixed"} (closed-form plug-in
-SE, weights held fixed; the default), \code{"random"} (numerical delta-method
-SE that propagates the data-dependence of the weights), or \code{"both"}
-(return both).}
+\item{weights}{Optional numeric vector of non-negative, user-chosen per-SNP
+weights (length equal to \code{BetaXG}). When supplied, these fixed weights
+replace the default inverse-variance weights and the standard error is the
+closed-form fixed-weight SE. When \code{NULL} (the default), inverse-variance
+weights are used and the full-gradient SE is returned.}
 
 \item{grad_rel_step}{Numeric; relative finite-difference step used by the
-random-weight numerical SE, expressed as a multiple of each association's
-standard error. Only used when \code{se_weights} is \code{"random"} or \code{"both"}.}
+full-gradient numerical SE (default weighting only), expressed as a multiple
+of each association's standard error.}
 
 \item{alpha}{Significance level retained in the returned guard settings.}
 
@@ -75,40 +75,34 @@ standard error. Only used when \code{se_weights} is \code{"random"} or \code{"bo
 \value{
 A list containing:
 \item{rho}{Pairwise coheterogeneity correlation matrix.}
-\item{se}{Pairwise standard error matrix for \code{rho}, computed with the
-primary weighting (\code{"fixed"} for \code{se_weights} \code{"fixed"} or \code{"both"},
-\code{"random"} for \code{se_weights} \code{"random"}).}
-\item{z_statistic}{Pairwise z-statistic matrix for the primary SE.}
-\item{wald_statistic}{Pairwise Wald statistic matrix for the primary SE.}
-\item{p_value}{Pairwise p-value matrix for the primary SE.}
-\item{se_fixed, z_fixed, wald_fixed, p_value_fixed}{Fixed-weight (closed-form)
-results; returned only when \code{se_weights = "both"}.}
-\item{se_random, z_random, wald_random, p_value_random}{Random-weight
-(numerical) results; returned only when \code{se_weights = "both"}.}
+\item{se}{Pairwise standard error matrix for \code{rho}: the full-gradient
+delta-method SE with the default inverse-variance weights, or the
+fixed-weight closed-form SE when \code{weights} is supplied.}
+\item{z_statistic}{Pairwise z-statistic matrix.}
+\item{wald_statistic}{Pairwise Wald statistic matrix.}
+\item{p_value}{Pairwise p-value matrix.}
 \item{K}{Matrix of valid SNP counts per trait pair.}
 \item{flag}{Matrix of per-pair diagnostic flags.}
 \item{method}{Method label for the estimator.}
-\item{se_weights}{The weighting option used for the standard error.}
 \item{guards}{List of guardrail settings used in the analysis.}
 \item{diagnostics}{Optional detailed diagnostics by trait pair.}
 }
 \description{
 Computes pairwise coheterogeneity correlations across multiple outcome traits
 using the bias-corrected moment estimator for instrument-borrowing Mendelian
-randomization. The standard error of the estimate can be obtained two ways:
+randomization.
 }
 \details{
-\describe{
-\item{\code{"fixed"}}{The closed-form plug-in SE (Theorem 1). The
-inverse-variance weights are treated as fixed (non-random) when the
-estimator is linearized. This is the original, computationally cheap SE.}
-\item{\code{"random"}}{A numerical delta-method SE that differentiates the
-estimator through the data-dependent inverse-variance weights, i.e. the
-weights are treated as random (estimated). This is the exact first-order
-SE; the closed form omits the weight-estimation term.}
-}
+By default the estimator uses data-dependent inverse-variance precision
+weights, and the reported standard error is the exact first-order
+delta-method (\emph{full-gradient}) SE of Theorem 1: the estimator is
+differentiated through \emph{all} of its data dependence, including the
+weights \eqn{\hat w_k}.
 
-The two coincide when the per-SNP ratios are homogeneous and diverge as the
-coheterogeneity dispersion grows, the fixed-weight SE being the conservative
-(larger) of the two. Use \code{se_weights = "both"} to return them together.
+A user who wishes to weight the instruments differently can supply their own
+per-SNP weights through \code{weights}. These are treated as \emph{fixed}
+(they are constants chosen by the user, not estimated from the data), so the
+reported standard error is the closed-form fixed-weight SE --- which is the
+exact delta-method SE for fixed weights, because there is no
+weight-estimation term to propagate.
 }

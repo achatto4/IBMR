@@ -117,6 +117,40 @@ cohet_res$flag
 cohet_res$K
 ```
 
+# Standard Errors and Custom Weights
+
+By default, `coheterogeneity_Q()` reports the full-gradient delta-method
+standard error (Theorem 1): the estimator is differentiated through all of its
+data dependence, including the inverse-variance weights, which are themselves
+estimated from the data.
+
+If you prefer to weight instruments in your own way, pass a per-SNP `weights`
+vector. User-supplied weights are treated as *fixed* --- they are your choice,
+not estimated from the data --- so the reported standard error is the exact
+fixed-weight closed form.
+
+```{r}
+# Example: equal weights across instruments (a simple fixed-weight scheme).
+custom_w <- rep(1, length(BetaXG))
+
+cohet_fixed <- coheterogeneity_Q(
+  BetaXG = BetaXG,
+  BetaYG_matrix = BetaYG_matrix,
+  seBetaXG = seBetaXG,
+  seBetaYG_matrix = seBetaYG_matrix,
+  weights = custom_w,
+  F_min = 5,
+  min_K_pair = 20
+)
+
+round(cohet_fixed$se, 4)   # fixed-weight closed-form SE
+cohet_fixed$method
+```
+
+Any non-negative vector works (for example, weights proportional to a
+user-defined instrument-quality score); it is normalized internally per trait
+pair over the SNPs retained after the guardrails.
+
 # Interpreting the Output
 
 The diagonal entries of `rho` are equal to 1 by definition. The quantities of
