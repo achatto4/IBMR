@@ -94,9 +94,35 @@ round(cohet_res$rho, 3)
 cohet_res$flag
 ```
 
-This returns pairwise coheterogeneity estimates between the primary outcome and
-candidate auxiliary traits. The selected auxiliary trait can then be used in
-`IBMODE()` or `IBPRESSO()`.
+`cohet_res$rho` holds the pairwise coheterogeneity estimates between the primary
+outcome and each candidate auxiliary trait; larger values indicate greater
+overlap in valid/invalid instrument structure. Select the auxiliary trait with
+the strongest (significant) coheterogeneity and carry it into a robust MR
+estimator. Using the pre-formatted data for the recommended auxiliary trait:
+
+```r
+ibp <- IBPRESSO(
+  BetaOutcome  = "BetaOutcome",
+  BetaExposure = "BetaExposure",
+  BetaAux      = "BetaAux",
+  SdOutcome    = "SdOutcome",
+  SdExposure   = "SdExposure",
+  SdAux        = "SdAux",
+  data         = toy_ibmr_example$dat_ibpresso_aux1,
+  OUTLIERtest  = TRUE,
+  seed         = 1
+)
+
+c(estimate = ibp$corrected_beta,
+  se        = ibp$corrected_se,
+  p         = ibp$p_value,
+  n_outliers = ibp$n_outliers)
+```
+
+`ibp$corrected_beta` is the outlier-corrected causal effect of the exposure on
+the primary outcome, borrowing instruments from the auxiliary trait;
+`ibp$outlier_idx` lists the instruments flagged as pleiotropic. `IBMODE()`
+provides an alternative mode-based estimator with the same inputs.
 
 ## Included Example Data
 
