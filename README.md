@@ -126,31 +126,6 @@ Longer tutorials are provided in the package vignettes:
 These vignettes expand on the screening logic, toy data structure,
 interpretation of outputs, and downstream workflow.
 
-## Main Functions
-
-### `coheterogeneity_Q()`
-
-Computes pairwise coheterogeneity across traits using the guarded
-bias-corrected moment estimator with a closed-form plug-in standard error. The
-returned object includes:
-
-- `rho`
-- `se`
-- `z_statistic`
-- `wald_statistic`
-- `p_value`
-- `K`
-- `flag`
-
-### `IBMODE()`
-
-Performs multidimensional mode-based estimation across the primary and
-auxiliary traits.
-
-### `IBPRESSO()`
-
-Performs MR-PRESSO with instrument borrowing using a selected auxiliary trait.
-
 ## Input Checks
 
 Before running the package, it is good practice to confirm that:

@@ -62,6 +62,7 @@
 #' \item{guards}{List of guardrail settings used in the analysis.}
 #' \item{diagnostics}{Optional detailed diagnostics by trait pair.}
 #'
+#' @importFrom stats pnorm
 #' @export
 coheterogeneity_Q <- function(
     BetaXG,

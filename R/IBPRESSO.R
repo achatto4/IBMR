@@ -38,7 +38,8 @@
 #' changes the causal estimate.
 #'
 #' @importFrom MASS cov.rob
-#' @importFrom stats lm coef var predict quantile mahalanobis rnorm complete.cases qchisq
+#' @importFrom stats lm coef var predict quantile mahalanobis rnorm complete.cases qchisq as.formula setNames update
+#' @importFrom utils globalVariables
 #' @export
 #'
 #' @examples

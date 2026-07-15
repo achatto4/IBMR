@@ -25,5 +25,5 @@ Suggests:
     parallel,
     testthat (>= 3.0.0)
 VignetteBuilder: knitr
-URL: https://github.com/achatto4/IBMR
-BugReports: https://anaghchattopadhyay.github.io/
+URL: https://github.com/achatto4/IBMR, https://achatto4.github.io/IBMR/
+BugReports: https://github.com/achatto4/IBMR/issues
