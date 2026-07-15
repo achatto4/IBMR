@@ -38,7 +38,7 @@
 #' changes the causal estimate.
 #'
 #' @importFrom MASS cov.rob
-#' @importFrom stats lm coef var predict quantile mahalanobis rnorm complete.cases
+#' @importFrom stats lm coef var predict quantile mahalanobis rnorm complete.cases qchisq
 #' @export
 #'
 #' @examples
@@ -329,8 +329,7 @@ IBPRESSO <- function(
     message("Significant pleiotropy detected. Identifying outliers...")
 
     mahal_dist <- obs_results$mahal_dist
-    outlier_threshold <- quantile(mahal_dist, 1 - SignifThreshold, na.rm = TRUE)
-    outlier_indices <- which(mahal_dist > outlier_threshold)
+    outlier_indices <- which(mahal_dist > qchisq(1 - SignifThreshold, df = 2))  # D^2 ~ chi^2_2 under validity
     n_outliers <- length(outlier_indices)
 
     if (n_outliers > 0 && n_outliers < nrow(core)) {

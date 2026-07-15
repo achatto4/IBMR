@@ -1,5 +1,5 @@
 exportPattern("^[[:alpha:]]+")
-importFrom("stats", "as.formula", "coef", "complete.cases", "lm",
+importFrom("stats", "qchisq", "as.formula", "coef", "complete.cases", "lm",
            "mad", "mahalanobis", "pnorm", "predict", "pt", "qnorm",
            "quantile", "rnorm", "sd", "setNames", "update", "var")
 importFrom("utils", "globalVariables")
