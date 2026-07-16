@@ -8,7 +8,7 @@ home:
 
 navbar:
   structure:
-    left: [intro, reference, articles]
+    left: [intro, reference]
     right: [github]
   components:
     intro:
@@ -17,13 +17,6 @@ navbar:
     reference:
       text: Reference
       href: reference/index.html
-    articles:
-      text: Articles
-      menu:
-      - text: Auxiliary Trait Selection
-        href: articles/auxiliary-selection.html
-      - text: Instrument Borrowing Workflow
-        href: articles/instrument-borrowing-workflow.html
     github:
       icon: fab fa-github
       href: https://github.com/achatto4/IBMR
@@ -40,4 +33,3 @@ reference:
 - title: Example data
   contents:
   - ibmr_example
-  - toy_ibmr_example

@@ -9,14 +9,14 @@ A named list with the following entries:
 \describe{
 \item{BetaXG}{Numeric vector of SNP-exposure associations.}
 \item{seBetaXG}{Standard errors for \code{BetaXG}.}
-\item{BetaYG_matrix}{Matrix of SNP-outcome associations; columns \code{Primary}
-and \code{Auxiliary}.}
+\item{BetaYG_matrix}{Matrix of SNP-outcome associations; columns \code{Primary},
+\code{Auxiliary_1}, and \code{Auxiliary_2}.}
 \item{seBetaYG_matrix}{Standard errors matching \code{BetaYG_matrix}.}
 \item{primary_trait}{\code{"Primary"}.}
-\item{candidate_auxiliaries}{\code{"Auxiliary"}.}
-\item{recommended_auxiliary}{\code{"Auxiliary"}.}
+\item{candidate_auxiliaries}{\code{c("Auxiliary_1", "Auxiliary_2")}.}
+\item{recommended_auxiliary}{\code{"Auxiliary_1"}.}
 \item{dat_ibpresso_aux1}{Data frame formatted for \code{IBPRESSO()} with the
-primary outcome and the borrowed auxiliary outcome.}
+primary outcome and the recommended auxiliary outcome (\code{Auxiliary_1}).}
 \item{source_note}{Description of how the example was generated.}
 }
 }
@@ -25,10 +25,10 @@ data(ibmr_example)
 }
 \description{
 A simulated summary-statistics example for the \code{IBMR} workflow with one
-exposure, one primary outcome, and one auxiliary outcome. The data are
-simulated (not real GWAS data): the exposure has a genuine positive effect on
-the primary outcome, and a subset of invalid instruments exhibit pleiotropy
-shared between the primary and auxiliary outcomes, so the auxiliary outcome is
-informative for instrument borrowing.
+exposure, one primary outcome, and two candidate auxiliary outcomes. The data
+are simulated (not real GWAS data): the exposure has a genuine positive effect
+on the primary outcome, \code{Auxiliary_1} shares pleiotropic (invalid-instrument)
+structure with the primary outcome and is therefore informative for instrument
+borrowing, while \code{Auxiliary_2} shares little and is not.
 }
 \keyword{datasets}

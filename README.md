@@ -69,12 +69,12 @@ exposure (for example, body mass index) on a primary outcome (for example,
 coronary artery disease), borrowing instruments from a related auxiliary outcome
 (for example, type 2 diabetes). The bundled dataset `ibmr_example` is a
 **simulated** example of this setting — one exposure, one primary outcome, and
-one auxiliary outcome — and is not real GWAS data. In the simulation the
-exposure has a true positive effect on the primary outcome, and a subset of
-invalid instruments exhibit pleiotropy shared with the auxiliary outcome, so the
-auxiliary outcome is informative for instrument borrowing.
+two candidate auxiliary outcomes — and is not real GWAS data. In the simulation
+the exposure has a true positive effect on the primary outcome; `Auxiliary_1`
+shares invalid-instrument (pleiotropic) structure with the primary outcome, while
+`Auxiliary_2` does not.
 
-### Step 1 — Screen the auxiliary outcome with coheterogeneity
+### Step 1 — Screen candidate auxiliary outcomes with coheterogeneity
 
 ```r
 library(IBMR)
@@ -90,14 +90,13 @@ cohet_res <- coheterogeneity_Q(
   min_K_pair = 20
 )
 
-round(cohet_res$rho, 3)
-cohet_res$flag
-#> coheterogeneity(primary, auxiliary) ~ 0.82
+round(cohet_res$rho, 3)   # coheterogeneity of the primary outcome with each candidate
+#> Primary vs Auxiliary_1 ~ 0.70  (shared pleiotropic structure -> informative)
+#> Primary vs Auxiliary_2 ~ -0.14 (little shared structure)
 ```
 
-A large, significant coheterogeneity indicates that the primary and auxiliary
-outcomes share invalid (pleiotropic) instruments for the exposure, so the
-auxiliary outcome is informative for instrument borrowing.
+The candidate with the largest significant coheterogeneity — here `Auxiliary_1`
+— is selected as the auxiliary outcome for instrument borrowing.
 
 ### Step 2 — Estimate the causal effect by instrument borrowing
 
@@ -106,12 +105,14 @@ estimators. `IBMODE()` is the primary estimator; `IBPRESSO()` provides a
 complementary residual-based estimator.
 
 ```r
+sel <- c(dat$primary_trait, dat$recommended_auxiliary)   # "Primary", "Auxiliary_1"
+
 # Primary estimator: mode-based instrument borrowing
 ibmode <- IBMODE(
   BetaXG          = dat$BetaXG,
-  BetaYG_matrix   = dat$BetaYG_matrix,
+  BetaYG_matrix   = dat$BetaYG_matrix[, sel],
   seBetaXG        = dat$seBetaXG,
-  seBetaYG_matrix = dat$seBetaYG_matrix,
+  seBetaYG_matrix = dat$seBetaYG_matrix[, sel],
   phi    = c(1, 0.5),
   n_boot = 200,
   seed   = 1
@@ -153,15 +154,6 @@ names(ibmr_example)
 
 `ibmr_example` is a simulated dataset provided to illustrate the workflow; it is
 not intended as a realistic full-scale GWAS simulation.
-
-## Vignettes
-
-Extended tutorials are provided as package vignettes:
-
-- `auxiliary-selection`: coheterogeneity-based screening of candidate auxiliary
-  outcomes.
-- `instrument-borrowing-workflow`: end-to-end analysis using the selected
-  auxiliary outcome in `IBMODE()` and `IBPRESSO()`.
 
 ## Citation
 

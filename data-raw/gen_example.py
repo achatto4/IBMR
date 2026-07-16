@@ -1,55 +1,51 @@
-import numpy as np
+# Generate the simulated illustrative dataset for IBMR (seed 2025).
+# One exposure, one primary outcome, and TWO candidate auxiliary outcomes:
+#   Auxiliary_1 shares most of its invalid-instrument (pleiotropic) structure
+#   with the primary outcome (high coheterogeneity, the informative auxiliary),
+#   Auxiliary_2 shares little (low coheterogeneity).
+# Instruments are all strong so both IBMODE and IBPRESSO behave stably.
+import numpy as np, csv
 rng = np.random.default_rng(2025)
 
-# ---- DGP: BMI (exposure) -> CAD (primary), T2D (auxiliary) ----
-# We want:
-#  * true positive BMI->CAD effect (theta_cad ~ +0.4)
-#  * T2D a genuine causal/related outcome (theta_t2d ~ +0.5)
-#  * a subset of invalid instruments (pleiotropy) SHARED across CAD & T2D  -> high coheterogeneity
-#  * clean strong instruments so both IBPRESSO and IBMODE behave
-K = 250                          # instruments
-theta_cad = 0.40                 # true BMI->CAD
-theta_t2d = 0.55                 # true BMI->T2D
-N = 3e5                          # GWAS sample size -> se ~ 1/sqrt(N)
-se = 1/np.sqrt(N)
+K = 250
+theta_primary = 0.40          # true exposure -> primary-outcome effect
+N = 3e5; se = 1/np.sqrt(N)
+bx_true = rng.uniform(0.02, 0.06, K) * rng.choice([-1, 1], K)
 
-# instrument strengths: all strong (|Z|>=5), realistic BMI effect sizes 0.02-0.06
-bx_true = rng.uniform(0.02, 0.06, K) * rng.choice([-1,1], K)
+n_inv = int(0.30*K); inv = rng.permutation(K)[:n_inv]
 
-# pleiotropy: 30% invalid; of those, a fraction SHARED across both outcomes (D_ov ~ 0.7)
-frac_invalid = 0.30
-n_inv = int(frac_invalid*K)
-inv = rng.permutation(K)[:n_inv]
-n_shared = int(0.7*n_inv)
-shared = inv[:n_shared]; cad_only = inv[n_shared: n_shared + (n_inv-n_shared)//2]; t2d_only = inv[n_shared + (n_inv-n_shared)//2:]
+a_primary = np.zeros(K); a_aux1 = np.zeros(K); a_aux2 = np.zeros(K)
+# Auxiliary_1: 70% of the primary's invalid set is SHARED -> high coheterogeneity
+n_sh1 = int(0.70*n_inv); shared1 = inv[:n_sh1]
+sh = rng.normal(0, 0.010, n_sh1)
+a_primary[shared1] = sh
+a_aux1[shared1]    = 0.9*sh + rng.normal(0, 0.002, n_sh1)
+# primary-only invalid
+prim_only = inv[n_sh1:]
+a_primary[prim_only] = rng.normal(0, 0.010, len(prim_only))
+# Auxiliary_1 also has its own independent invalid instruments
+a_inv1 = rng.permutation(K)[:n_inv]; a_aux1[a_inv1] += rng.normal(0, 0.004, n_inv)
+# Auxiliary_2: invalid instruments mostly DISJOINT from primary -> low coheterogeneity
+a_inv2 = rng.permutation(K)[:n_inv]; a_aux2[a_inv2] = rng.normal(0, 0.010, n_inv)
 
-alpha_cad = np.zeros(K); alpha_t2d = np.zeros(K)
-# shared pleiotropy: correlated direct effects on both CAD and T2D (drives coheterogeneity)
-sh = rng.normal(0, 0.010, n_shared)
-alpha_cad[shared] = sh;  alpha_t2d[shared] = sh*0.9 + rng.normal(0,0.002,n_shared)
-alpha_cad[cad_only] = rng.normal(0,0.010,len(cad_only))
-alpha_t2d[t2d_only] = rng.normal(0,0.010,len(t2d_only))
+bxh   = bx_true + rng.normal(0, se, K)
+byp   = theta_primary*bx_true + a_primary + rng.normal(0, se, K)
+bya1  = 0.55*bx_true + a_aux1 + rng.normal(0, se, K)   # aux1 also causally related
+bya2  = 0.30*bx_true + a_aux2 + rng.normal(0, se, K)
+sebx = np.full(K, se); sep = np.full(K, se); sa1 = np.full(K, se); sa2 = np.full(K, se)
 
-# observed betas: by = theta*bx + alpha + noise
-bxh  = bx_true + rng.normal(0, se, K)
-bycad = theta_cad*bx_true + alpha_cad + rng.normal(0, se, K)
-byt2d = theta_t2d*bx_true + alpha_t2d + rng.normal(0, se, K)
-sebx = np.full(K, se); secad = np.full(K, se); set2d = np.full(K, se)
+# quick coheterogeneity proxy
+def cohet(bx,by1,by2,sy1,sy2):
+    th1=by1/bx; th2=by2/bx; s1=(sy1/bx)**2; s2=(sy2/bx)**2
+    w=1/np.sqrt(s1*s2); w/=w.sum()
+    d1=th1-np.sum(w*th1); d2=th2-np.sum(w*th2)
+    return np.sum(w*(d1*d2))/np.sqrt(np.sum(w*d1**2)*np.sum(w*d2**2))
+print(f"coheterogeneity(primary, Auxiliary_1) = {cohet(bxh,byp,bya1,sep,sa1):.2f}  [expect HIGH]")
+print(f"coheterogeneity(primary, Auxiliary_2) = {cohet(bxh,byp,bya2,sep,sa2):.2f}  [expect LOW]")
 
-# ---- sanity: IVW BMI->CAD should be POSITIVE (near 0.4, inflated by pleiotropy) ----
-def ivw(bx,by,sy):
-    w=1/sy**2; return np.sum(w*bx*by)/np.sum(w*bx**2)
-print(f"IVW BMI->CAD (all)   = {ivw(bxh,bycad,secad):+.3f}   [true {theta_cad}, expect positive, biased up by pleiotropy]")
-print(f"IVW BMI->CAD (valid) = {ivw(bxh[~np.isin(np.arange(K),inv)],bycad[~np.isin(np.arange(K),inv)],secad[~np.isin(np.arange(K),inv)]):+.3f}   [should be near {theta_cad}]")
-print(f"IVW BMI->T2D (all)   = {ivw(bxh,byt2d,set2d):+.3f}")
-print(f"instrument |Z| range = [{np.min(np.abs(bxh/sebx)):.1f}, {np.max(np.abs(bxh/sebx)):.1f}]  (all strong)")
-print(f"invalid: {n_inv} ({n_shared} shared) of {K}  -> expect high coheterogeneity, ~{n_inv} outliers")
-
-# save CSV for R packaging
-import csv
-snps=[f"rs{1000+i}" for i in range(K)]
-w=csv.writer(open("sim_bmi_cad_t2d.csv","w"))  # run from data-raw/
-w.writerow(["SNP","BetaXG","seBetaXG","Beta_CAD","se_CAD","Beta_T2D","se_T2D"])
+w=csv.writer(open("sim_ibmr_example.csv","w"))
+w.writerow(["SNP","BetaXG","seBetaXG","Beta_Primary","se_Primary","Beta_Aux1","se_Aux1","Beta_Aux2","se_Aux2"])
 for i in range(K):
-    w.writerow([snps[i], round(bxh[i],6), round(sebx[i],6), round(bycad[i],6), round(secad[i],6), round(byt2d[i],6), round(set2d[i],6)])
-print("wrote sim_bmi_cad_t2d.csv")
+    w.writerow([f"rs{1000+i}", round(bxh[i],6),round(sebx[i],6), round(byp[i],6),round(sep[i],6),
+                round(bya1[i],6),round(sa1[i],6), round(bya2[i],6),round(sa2[i],6)])
+print("wrote sim_ibmr_example.csv")

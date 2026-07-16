@@ -19,12 +19,9 @@ Imports:
     stats,
     utils
 Suggests:
-    knitr,
     pkgdown,
-    rmarkdown,
     parallel,
     testthat (>= 3.0.0)
-VignetteBuilder: knitr
 URL: https://github.com/achatto4/IBMR, https://achatto4.github.io/IBMR/
 BugReports: https://github.com/achatto4/IBMR/issues
 Depends: 
