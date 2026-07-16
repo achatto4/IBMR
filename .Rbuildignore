@@ -8,3 +8,5 @@
 ^_pkgdown\.yml$
 ^pkgdown$
 ^index\.md$
+^data-raw$
+^CODEX.*\.md$

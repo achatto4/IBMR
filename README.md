@@ -66,39 +66,39 @@ devtools::install(".")
 library(IBMR)
 ```
 
-## Minimal Example
+## Example: body mass index (BMI) and coronary artery disease (CAD)
 
-At minimum, the package expects:
+We estimate the effect of BMI on CAD, borrowing instruments from type 2 diabetes
+(T2D) as an auxiliary trait. The bundled dataset `ibmr_example` is a simulated
+illustration (not real GWAS data): BMI has a true positive effect on CAD, and a
+subset of invalid instruments show pleiotropy shared with T2D, so T2D is an
+informative auxiliary trait.
 
-- `BetaXG`: SNP-exposure associations
-- `seBetaXG`: standard errors for `BetaXG`
-- `BetaYG_matrix`: SNP-outcome associations
-- `seBetaYG_matrix`: standard errors for `BetaYG_matrix`
-
-Rows must correspond to the same SNPs in the same order across all objects.
+#### Step 1. Screen the auxiliary trait with coheterogeneity
 
 ```r
 library(IBMR)
-data("toy_ibmr_example")
+data("ibmr_example")
+dat <- ibmr_example
 
 cohet_res <- coheterogeneity_Q(
-  BetaXG = toy_ibmr_example$BetaXG,
-  BetaYG_matrix = toy_ibmr_example$BetaYG_matrix,
-  seBetaXG = toy_ibmr_example$seBetaXG,
-  seBetaYG_matrix = toy_ibmr_example$seBetaYG_matrix,
+  BetaXG          = dat$BetaXG,
+  BetaYG_matrix   = dat$BetaYG_matrix,
+  seBetaXG        = dat$seBetaXG,
+  seBetaYG_matrix = dat$seBetaYG_matrix,
   F_min = 5,
   min_K_pair = 20
 )
 
-round(cohet_res$rho, 3)
+round(cohet_res$rho, 3)   # coheterogeneity of CAD with the T2D auxiliary
 cohet_res$flag
+#> coheterogeneity(CAD, T2D) ~ 0.82  (strong shared pleiotropic structure)
 ```
 
-`cohet_res$rho` holds the pairwise coheterogeneity estimates between the primary
-outcome and each candidate auxiliary trait; larger values indicate greater
-overlap in valid/invalid instrument structure. Select the auxiliary trait with
-the strongest (significant) coheterogeneity and carry it into a robust MR
-estimator. Using the pre-formatted data for the recommended auxiliary trait:
+A large, significant coheterogeneity indicates that CAD and T2D share invalid
+(pleiotropic) instruments for BMI, so T2D is an informative auxiliary trait.
+
+#### Step 2. Estimate the causal effect with instrument borrowing
 
 ```r
 ibp <- IBPRESSO(
@@ -108,7 +108,7 @@ ibp <- IBPRESSO(
   SdOutcome    = "SdOutcome",
   SdExposure   = "SdExposure",
   SdAux        = "SdAux",
-  data         = toy_ibmr_example$dat_ibpresso_aux1,
+  data         = dat$dat_ibpresso_aux1,   # CAD primary, T2D auxiliary
   OUTLIERtest  = TRUE,
   seed         = 1
 )
@@ -117,24 +117,47 @@ c(estimate = ibp$corrected_beta,
   se        = ibp$corrected_se,
   p         = ibp$p_value,
   n_outliers = ibp$n_outliers)
+#> corrected_beta ~ 0.40 after removing 60 shared-pleiotropy instruments
+#> flagged by borrowing from T2D (recovers the true +0.40 simulated effect).
 ```
 
-`ibp$corrected_beta` is the outlier-corrected causal effect of the exposure on
-the primary outcome, borrowing instruments from the auxiliary trait;
-`ibp$outlier_idx` lists the instruments flagged as pleiotropic. `IBMODE()`
-provides an alternative mode-based estimator with the same inputs.
+`ibp$corrected_beta` is the outlier-corrected effect of BMI on CAD after
+borrowing instruments from T2D; `ibp$outlier_idx` lists the flagged pleiotropic
+instruments.
+
+#### Step 3 (alternative). Mode-based estimator
+
+`IBMODE()` provides a mode-based alternative that takes the same summary
+statistics directly (primary and auxiliary outcomes as the two columns of
+`BetaYG_matrix`):
+
+```r
+ibmode <- IBMODE(
+  BetaXG          = dat$BetaXG,
+  BetaYG_matrix   = dat$BetaYG_matrix,   # columns: CAD (primary), T2D (auxiliary)
+  seBetaXG        = dat$seBetaXG,
+  seBetaYG_matrix = dat$seBetaYG_matrix,
+  phi   = c(1, 0.5),
+  n_boot = 200,
+  seed  = 1
+)
+
+ibmode[, c("phi", "Estimate_CAD", "SE_CAD", "P_CAD")]
+#> Estimate_CAD ~ 0.40 at both phi values (agrees with IBPRESSO and the truth).
+```
 
 ## Included Example Data
 
-The package includes a toy dataset:
+The package bundles two datasets:
 
-- `toy_ibmr_example`
-
-Load it with:
+- `ibmr_example` — simulated illustrative example (BMI &rarr; CAD, T2D
+  auxiliary), used in the example above.
+- `toy_ibmr_example` — a small simulated example with two candidate auxiliary
+  traits, for quick testing.
 
 ```r
-data("toy_ibmr_example")
-names(toy_ibmr_example)
+data("ibmr_example")
+names(ibmr_example)
 ```
 
 This example is intended to illustrate the core workflow rather than to serve

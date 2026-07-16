@@ -27,3 +27,6 @@ Suggests:
 VignetteBuilder: knitr
 URL: https://github.com/achatto4/IBMR, https://achatto4.github.io/IBMR/
 BugReports: https://github.com/achatto4/IBMR/issues
+Depends: 
+    R (>= 3.5)
+LazyData: true

@@ -87,7 +87,7 @@ dat <- data.frame(
 )
 
 # Run MR-PRESSO with instrument borrowing
-results <- mrpresso_ib(
+results <- IBPRESSO(
   BetaOutcome = "beta_outcome",
   BetaExposure = "beta_exposure",
   BetaAux = "beta_aux",
