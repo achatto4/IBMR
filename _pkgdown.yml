@@ -27,6 +27,7 @@ navbar:
     github:
       icon: fab fa-github
       href: https://github.com/achatto4/IBMR
+      aria-label: GitHub repository
 
 reference:
 - title: Core functions
@@ -38,4 +39,5 @@ reference:
 
 - title: Example data
   contents:
+  - ibmr_example
   - toy_ibmr_example
