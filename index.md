@@ -82,8 +82,8 @@ coronary artery disease), borrowing instruments from a related auxiliary outcome
 **simulated** example of this setting — one exposure, one primary outcome, and
 two candidate auxiliary outcomes — and is not real GWAS data. In the simulation
 the exposure has a true positive effect on the primary outcome; `Auxiliary_1`
-shares invalid-instrument (pleiotropic) structure with the primary outcome, while
-`Auxiliary_2` does not.
+shares substantial invalid-instrument (pleiotropic) structure with the primary
+outcome, while `Auxiliary_2` shares little.
 
 ### Step 1 — Screen candidate auxiliary outcomes with coheterogeneity
 
@@ -101,13 +101,15 @@ cohet_res <- coheterogeneity_Q(
   min_K_pair = 20
 )
 
-round(cohet_res$rho, 3)   # coheterogeneity of the primary outcome with each candidate
-#> Primary vs Auxiliary_1 ~ 0.70  (shared pleiotropic structure -> informative)
-#> Primary vs Auxiliary_2 ~ -0.14 (little shared structure)
+round(cohet_res$rho, 3)       # coheterogeneity of the primary outcome with each candidate
+round(cohet_res$p_value, 4)   # and the significance of each estimate
+#> Primary vs Auxiliary_1: rho ~ 0.70, p ~ 0   -> selected (largest coheterogeneity)
+#> Primary vs Auxiliary_2: rho ~ -0.14, p ~ 0  (significant but small; uninformative)
 ```
 
-The candidate with the largest significant coheterogeneity — here `Auxiliary_1`
-— is selected as the auxiliary outcome for instrument borrowing.
+Both candidates are statistically significant, but `Auxiliary_1` has by far the
+largest coheterogeneity with the primary outcome, so it is selected as the
+auxiliary outcome for instrument borrowing.
 
 ### Step 2 — Estimate the causal effect by instrument borrowing
 
