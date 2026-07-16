@@ -1,51 +1,37 @@
 # IBMR
 
-`IBMR` is an R package for instrument borrowing in Mendelian randomization
-(MR) using summary-level genetic association data.
+`IBMR` is an R package for instrument borrowing in Mendelian randomization (MR)
+using summary-level genetic association data. When a primary outcome shares
+overlapping valid instruments, or similar mechanisms of instrument invalidity,
+with a related auxiliary outcome for a given exposure, `IBMR` uses the auxiliary
+outcome to improve the robustness and efficiency of causal-effect estimation for
+the primary outcome.
 
-The motivating setting is one in which a primary outcome may share overlapping
-valid instruments, or similar mechanisms of instrument invalidity, with one or
-more related auxiliary outcome traits for a given exposure. `IBMR` provides
-tools to identify such auxiliary traits and to incorporate them into robust MR
-analyses.
+The package provides three functions:
 
-The package currently provides three main functions:
-
-- `coheterogeneity_Q()` for coheterogeneity-based auxiliary trait screening
-- `IBMODE()` for multidimensional mode-based estimation with instrument borrowing
-- `IBPRESSO()` for MR-PRESSO with an auxiliary trait
+- `coheterogeneity_Q()` — screens candidate auxiliary outcomes by quantifying
+  their coheterogeneity with the primary outcome.
+- `IBMODE()` — mode-based instrument-borrowing estimator (primary estimator).
+- `IBPRESSO()` — MR-PRESSO-based instrument-borrowing estimator (secondary
+  estimator).
 
 ## Overview
 
-Mendelian randomization is widely used to estimate causal effects of exposures
-on outcomes using genetic variants as instrumental variables. Standard MR
-methods can lose power or become biased when many candidate instruments are
-invalid. `IBMR` addresses this problem by leveraging related outcome traits that
-share informative heterogeneity structure with the primary outcome.
+Mendelian randomization estimates the causal effect of an exposure on an outcome
+using genetic variants as instrumental variables. Standard MR methods can lose
+power or become biased when many candidate instruments are invalid. `IBMR`
+mitigates this by borrowing information from a related auxiliary outcome that
+shares heterogeneity structure with the primary outcome. The analysis proceeds
+in two stages: candidate auxiliary outcomes are first screened with the
+coheterogeneity statistic, and the selected auxiliary outcome is then carried
+into the instrument-borrowing estimators.
 
-The typical workflow is:
-
-1. Assemble SNP-level summary statistics for the exposure, the primary outcome,
-   and one or more candidate auxiliary outcomes.
-2. Use `coheterogeneity_Q()` to quantify coheterogeneity between the primary
-   outcome and each auxiliary trait.
-3. Select the most informative auxiliary trait.
-4. Carry the selected auxiliary trait into `IBMODE()` or `IBPRESSO()` for
-   downstream robust MR analysis.
-
-## Graphical Overview
+## Graphical overview
 
 ![IBMR graphical summary](man/figures/ibmr-graphical-summary.png)
 
-The figure summarizes the conceptual workflow implemented in `IBMR`.
-
-- Panel A illustrates the motivating MR setting with valid and invalid
-  candidate instruments.
-- Panel B illustrates auxiliary-trait selection using coheterogeneity.
-- Panel C shows the summary-statistics inputs and ratio estimates used by the
-  methods.
-- Panel D illustrates the downstream joint-analysis setting used by `IBMODE()`
-  and `IBPRESSO()`.
+<!-- NOTE: replace man/figures/ibmr-graphical-summary.png with the updated
+     figure from the current version of the paper. -->
 
 ## Installation
 
@@ -53,28 +39,42 @@ Install from GitHub with:
 
 ```r
 install.packages("devtools")
-library(devtools)
 devtools::install_github("achatto4/IBMR")
 library(IBMR)
 ```
 
-For local development:
+## Preparing the input data
 
-```r
-install.packages(c("MASS", "ks"))
-devtools::install(".")
-library(IBMR)
-```
+`IBMR` operates on harmonized, summary-level instrument–trait associations. The
+inputs should be prepared as follows before using the package.
 
-## Example: body mass index (BMI) and coronary artery disease (CAD)
+1. **Instrument selection.** Select independent instruments for the exposure by
+   linkage-disequilibrium clumping and genome-wide-significance thresholding
+   (for example, `p < 5e-8` with `r^2 < 0.001`).
+2. **Harmonization.** For the primary outcome and every candidate auxiliary
+   outcome, align the association estimates to the exposure effect allele on the
+   selected instrument set, and remove ambiguous (palindromic) variants.
+3. **Non-overlapping samples.** Use an exposure GWAS whose sample does not
+   overlap the outcome GWAS samples (a two-sample design), so that the
+   estimation errors are independent across traits.
+4. **Sufficient heterogeneity.** Coheterogeneity screening is informative only
+   when the exposure–outcome pairs exhibit appreciable pleiotropic
+   heterogeneity; pairs with negligible heterogeneity yield unstable
+   coheterogeneity estimates.
 
-We estimate the effect of BMI on CAD, borrowing instruments from type 2 diabetes
-(T2D) as an auxiliary trait. The bundled dataset `ibmr_example` is a simulated
-illustration (not real GWAS data): BMI has a true positive effect on CAD, and a
-subset of invalid instruments show pleiotropy shared with T2D, so T2D is an
-informative auxiliary trait.
+## Example
 
-#### Step 1. Screen the auxiliary trait with coheterogeneity
+As a motivating illustration, one may wish to estimate the causal effect of an
+exposure (for example, body mass index) on a primary outcome (for example,
+coronary artery disease), borrowing instruments from a related auxiliary outcome
+(for example, type 2 diabetes). The bundled dataset `ibmr_example` is a
+**simulated** example of this setting — one exposure, one primary outcome, and
+one auxiliary outcome — and is not real GWAS data. In the simulation the
+exposure has a true positive effect on the primary outcome, and a subset of
+invalid instruments exhibit pleiotropy shared with the auxiliary outcome, so the
+auxiliary outcome is informative for instrument borrowing.
+
+### Step 1 — Screen the auxiliary outcome with coheterogeneity
 
 ```r
 library(IBMR)
@@ -90,17 +90,39 @@ cohet_res <- coheterogeneity_Q(
   min_K_pair = 20
 )
 
-round(cohet_res$rho, 3)   # coheterogeneity of CAD with the T2D auxiliary
+round(cohet_res$rho, 3)
 cohet_res$flag
-#> coheterogeneity(CAD, T2D) ~ 0.82  (strong shared pleiotropic structure)
+#> coheterogeneity(primary, auxiliary) ~ 0.82
 ```
 
-A large, significant coheterogeneity indicates that CAD and T2D share invalid
-(pleiotropic) instruments for BMI, so T2D is an informative auxiliary trait.
+A large, significant coheterogeneity indicates that the primary and auxiliary
+outcomes share invalid (pleiotropic) instruments for the exposure, so the
+auxiliary outcome is informative for instrument borrowing.
 
-#### Step 2. Estimate the causal effect with instrument borrowing
+### Step 2 — Estimate the causal effect by instrument borrowing
+
+The selected auxiliary outcome is carried into the instrument-borrowing
+estimators. `IBMODE()` is the primary estimator; `IBPRESSO()` provides a
+complementary residual-based estimator.
 
 ```r
+# Primary estimator: mode-based instrument borrowing
+ibmode <- IBMODE(
+  BetaXG          = dat$BetaXG,
+  BetaYG_matrix   = dat$BetaYG_matrix,
+  seBetaXG        = dat$seBetaXG,
+  seBetaYG_matrix = dat$seBetaYG_matrix,
+  phi    = c(1, 0.5),
+  n_boot = 200,
+  seed   = 1
+)
+
+ibmode[, c("phi", "Estimate_Primary", "SE_Primary", "P_Primary")]
+#> Estimate_Primary ~ 0.40 (recovers the true simulated effect)
+```
+
+```r
+# Secondary estimator: MR-PRESSO-based instrument borrowing
 ibp <- IBPRESSO(
   BetaOutcome  = "BetaOutcome",
   BetaExposure = "BetaExposure",
@@ -108,84 +130,40 @@ ibp <- IBPRESSO(
   SdOutcome    = "SdOutcome",
   SdExposure   = "SdExposure",
   SdAux        = "SdAux",
-  data         = dat$dat_ibpresso_aux1,   # CAD primary, T2D auxiliary
+  data         = dat$dat_ibpresso_aux1,
   OUTLIERtest  = TRUE,
   seed         = 1
 )
 
-c(estimate = ibp$corrected_beta,
-  se        = ibp$corrected_se,
-  p         = ibp$p_value,
-  n_outliers = ibp$n_outliers)
-#> corrected_beta ~ 0.40 after removing 60 shared-pleiotropy instruments
-#> flagged by borrowing from T2D (recovers the true +0.40 simulated effect).
+c(estimate = ibp$corrected_beta, se = ibp$corrected_se,
+  p = ibp$p_value, n_outliers = ibp$n_outliers)
+#> corrected_beta ~ 0.40 after removing the shared-pleiotropy instruments
 ```
 
-`ibp$corrected_beta` is the outlier-corrected effect of BMI on CAD after
-borrowing instruments from T2D; `ibp$outlier_idx` lists the flagged pleiotropic
-instruments.
+Both estimators recover the true simulated effect of the exposure on the primary
+outcome; `IBPRESSO()` additionally reports the instruments it flags as
+pleiotropic in `ibp$outlier_idx`.
 
-#### Step 3 (alternative). Mode-based estimator
-
-`IBMODE()` provides a mode-based alternative that takes the same summary
-statistics directly (primary and auxiliary outcomes as the two columns of
-`BetaYG_matrix`):
-
-```r
-ibmode <- IBMODE(
-  BetaXG          = dat$BetaXG,
-  BetaYG_matrix   = dat$BetaYG_matrix,   # columns: CAD (primary), T2D (auxiliary)
-  seBetaXG        = dat$seBetaXG,
-  seBetaYG_matrix = dat$seBetaYG_matrix,
-  phi   = c(1, 0.5),
-  n_boot = 200,
-  seed  = 1
-)
-
-ibmode[, c("phi", "Estimate_CAD", "SE_CAD", "P_CAD")]
-#> Estimate_CAD ~ 0.40 at both phi values (agrees with IBPRESSO and the truth).
-```
-
-## Included Example Data
-
-The package bundles two datasets:
-
-- `ibmr_example` — simulated illustrative example (BMI &rarr; CAD, T2D
-  auxiliary), used in the example above.
-- `toy_ibmr_example` — a small simulated example with two candidate auxiliary
-  traits, for quick testing.
+## Bundled data
 
 ```r
 data("ibmr_example")
 names(ibmr_example)
 ```
 
-This example is intended to illustrate the core workflow rather than to serve
-as a realistic full-scale GWAS simulation.
+`ibmr_example` is a simulated dataset provided to illustrate the workflow; it is
+not intended as a realistic full-scale GWAS simulation.
 
 ## Vignettes
 
-Longer tutorials are provided in the package vignettes:
+Extended tutorials are provided as package vignettes:
 
-- `vignettes/auxiliary-selection.Rmd`: coheterogeneity-based screening of
-  candidate auxiliary traits
-- `vignettes/instrument-borrowing-workflow.Rmd`: end-to-end workflow using the
-  selected auxiliary trait in `IBMODE()` and `IBPRESSO()`
-
-These vignettes expand on the screening logic, toy data structure,
-interpretation of outputs, and downstream workflow.
-
-## Input Checks
-
-Before running the package, it is good practice to confirm that:
-
-- SNP order matches across all vectors and matrices
-- alleles are harmonized across exposure and outcome traits
-- standard errors are finite and positive
-- weak instruments are handled appropriately
-- missing data are addressed consistently
+- `auxiliary-selection`: coheterogeneity-based screening of candidate auxiliary
+  outcomes.
+- `instrument-borrowing-workflow`: end-to-end analysis using the selected
+  auxiliary outcome in `IBMODE()` and `IBPRESSO()`.
 
 ## Citation
 
-If you use this package in applied work, please cite the repository and the
-relevant associated method paper.
+Chattopadhyay A, Chatterjee N. *Improving Mendelian Randomization Analysis by
+Instrument Borrowing from Auxiliary Outcome Traits.*

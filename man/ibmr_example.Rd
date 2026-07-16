@@ -9,14 +9,14 @@ A named list with the following entries:
 \describe{
 \item{BetaXG}{Numeric vector of SNP-exposure associations.}
 \item{seBetaXG}{Standard errors for \code{BetaXG}.}
-\item{BetaYG_matrix}{Matrix of SNP-outcome associations; columns \code{CAD}
-(primary) and \code{T2D} (auxiliary).}
+\item{BetaYG_matrix}{Matrix of SNP-outcome associations; columns \code{Primary}
+and \code{Auxiliary}.}
 \item{seBetaYG_matrix}{Standard errors matching \code{BetaYG_matrix}.}
-\item{primary_trait}{\code{"CAD"}.}
-\item{candidate_auxiliaries}{\code{"T2D"}.}
-\item{recommended_auxiliary}{\code{"T2D"}.}
-\item{dat_ibpresso_aux1}{Data frame formatted for \code{IBPRESSO()} with CAD as
-the primary outcome and T2D as the borrowed auxiliary trait.}
+\item{primary_trait}{\code{"Primary"}.}
+\item{candidate_auxiliaries}{\code{"Auxiliary"}.}
+\item{recommended_auxiliary}{\code{"Auxiliary"}.}
+\item{dat_ibpresso_aux1}{Data frame formatted for \code{IBPRESSO()} with the
+primary outcome and the borrowed auxiliary outcome.}
 \item{source_note}{Description of how the example was generated.}
 }
 }
@@ -24,12 +24,11 @@ the primary outcome and T2D as the borrowed auxiliary trait.}
 data(ibmr_example)
 }
 \description{
-A simulated summary-statistics example for the \code{IBMR} workflow, framed as the
-effect of body mass index (BMI) on coronary artery disease (CAD) with type 2
-diabetes (T2D) as the auxiliary trait. The data are simulated (not real GWAS
-data): the exposure has a genuine positive effect on both outcomes, and a
-subset of invalid instruments exhibit pleiotropy shared across CAD and T2D,
-so T2D is an informative auxiliary trait for instrument borrowing. Trait names
-are used only to make the workflow concrete.
+A simulated summary-statistics example for the \code{IBMR} workflow with one
+exposure, one primary outcome, and one auxiliary outcome. The data are
+simulated (not real GWAS data): the exposure has a genuine positive effect on
+the primary outcome, and a subset of invalid instruments exhibit pleiotropy
+shared between the primary and auxiliary outcomes, so the auxiliary outcome is
+informative for instrument borrowing.
 }
 \keyword{datasets}

@@ -15,15 +15,15 @@ d <- read.csv("data-raw/sim_bmi_cad_t2d.csv", stringsAsFactors = FALSE)
 
 BetaYG_matrix   <- as.matrix(d[, c("Beta_CAD", "Beta_T2D")])
 seBetaYG_matrix <- as.matrix(d[, c("se_CAD", "se_T2D")])
-colnames(BetaYG_matrix)   <- c("CAD", "T2D")
-colnames(seBetaYG_matrix) <- c("CAD", "T2D")
+colnames(BetaYG_matrix)   <- c("Primary", "Auxiliary")
+colnames(seBetaYG_matrix) <- c("Primary", "Auxiliary")
 rownames(BetaYG_matrix)   <- d$SNP
 
 dat_ibpresso_aux1 <- data.frame(
   SNP          = d$SNP,
   BetaOutcome  = d$Beta_CAD,   # primary outcome
   BetaExposure = d$BetaXG,     # exposure
-  BetaAux      = d$Beta_T2D,   # auxiliary
+  BetaAux      = d$Beta_T2D,   # auxiliary outcome
   SdOutcome    = d$se_CAD,
   SdExposure   = d$seBetaXG,
   SdAux        = d$se_T2D,
@@ -35,14 +35,14 @@ ibmr_example <- list(
   seBetaXG              = d$seBetaXG,
   BetaYG_matrix         = BetaYG_matrix,
   seBetaYG_matrix       = seBetaYG_matrix,
-  primary_trait         = "CAD",
-  candidate_auxiliaries = c("T2D"),
-  recommended_auxiliary = "T2D",
+  primary_trait         = "Primary",
+  candidate_auxiliaries = c("Auxiliary"),
+  recommended_auxiliary = "Auxiliary",
   dat_ibpresso_aux1     = dat_ibpresso_aux1,
   source_note = paste(
-    "Simulated illustrative example (not real GWAS data):",
-    "exposure BMI, primary outcome CAD, auxiliary outcome T2D;",
-    nrow(d), "strong instruments with shared pleiotropy across CAD and T2D."
+    "Simulated illustrative example (not real GWAS data): one exposure,",
+    "one primary outcome, and one auxiliary outcome;", nrow(d),
+    "strong instruments with pleiotropy shared between the two outcomes."
   )
 )
 
