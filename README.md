@@ -102,13 +102,15 @@ cohet_res <- coheterogeneity_Q(
 
 round(cohet_res$rho, 3)       # coheterogeneity of the primary outcome with each candidate
 round(cohet_res$p_value, 4)   # and the significance of each estimate
-#> Primary vs Auxiliary_1: rho ~ 0.70, p ~ 0   -> selected (largest coheterogeneity)
-#> Primary vs Auxiliary_2: rho ~ -0.14, p ~ 0  (significant but small; uninformative)
+#> Auxiliary_1 has the largest coheterogeneity with the primary outcome (~0.70).
 ```
 
-Both candidates are statistically significant, but `Auxiliary_1` has by far the
-largest coheterogeneity with the primary outcome, so it is selected as the
-auxiliary outcome for instrument borrowing.
+We recommend selecting the candidate auxiliary outcome that is significantly
+coheterogeneous with the primary outcome and has the largest coheterogeneity —
+here `Auxiliary_1`. If no candidate is significantly coheterogeneous with the
+primary outcome, instrument borrowing is unlikely to add information; the
+analysis should then be approached with caution, or a standard single-outcome
+MR method used instead.
 
 ### Step 2 — Estimate the causal effect by instrument borrowing
 
