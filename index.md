@@ -92,8 +92,8 @@ cohet_res <- coheterogeneity_Q(
 )
 
 round(cohet_res$rho, 3)   # coheterogeneity of the primary outcome with each candidate
-#> Auxiliary_1 ~ 0.66  (shared pleiotropic structure -> informative)
-#> Auxiliary_2 ~ 0.00  (little shared structure)
+#> Primary vs Auxiliary_1 ~ 0.70  (shared pleiotropic structure -> informative)
+#> Primary vs Auxiliary_2 ~ -0.14 (little shared structure)
 ```
 
 The candidate with the largest significant coheterogeneity — here `Auxiliary_1`
