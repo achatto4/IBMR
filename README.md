@@ -45,22 +45,32 @@ library(IBMR)
 
 ## Preparing the input data
 
-`IBMR` operates on harmonized, summary-level instrument–trait associations. The
-inputs should be prepared as follows before using the package.
+`IBMR` operates on harmonized, summary-level instrument–trait associations.
+Prepare the inputs as follows; where a step is also handled by
+`coheterogeneity_Q()`, the relevant argument is noted.
 
 1. **Instrument selection.** Select independent instruments for the exposure by
    linkage-disequilibrium clumping and genome-wide-significance thresholding
-   (for example, `p < 5e-8` with `r^2 < 0.001`).
+   (for example, `p < 5e-8` with `r^2 < 0.001`). Clumping and thresholding are
+   performed externally; `coheterogeneity_Q()` additionally removes weak
+   instruments through its `F_min` (first-stage F statistic) and `bx_min`
+   arguments.
 2. **Harmonization.** For the primary outcome and every candidate auxiliary
    outcome, align the association estimates to the exposure effect allele on the
-   selected instrument set, and remove ambiguous (palindromic) variants.
-3. **Non-overlapping samples.** Use an exposure GWAS whose sample does not
-   overlap the outcome GWAS samples (a two-sample design), so that the
-   estimation errors are independent across traits.
-4. **Sufficient heterogeneity.** Coheterogeneity screening is informative only
-   when the exposure–outcome pairs exhibit appreciable pleiotropic
-   heterogeneity; pairs with negligible heterogeneity yield unstable
-   coheterogeneity estimates.
+   selected instrument set and remove ambiguous (palindromic) variants. This
+   must be done before calling the package; `coheterogeneity_Q()` assumes
+   harmonized input.
+3. **Sample overlap.** Use a two-sample design in which the exposure GWAS sample
+   does not overlap the outcome GWAS samples. Overlap between the two *outcome*
+   samples is corrected internally: supply bivariate LD-score-regression
+   intercepts via `ldsc_intercepts` (with `use_ldsc = TRUE`) and
+   `coheterogeneity_Q()` removes the induced cross-trait sampling covariance.
+   The exposure–outcome non-overlap is assumed and not corrected.
+4. **Sufficient heterogeneity.** Coheterogeneity is informative only when the
+   exposure–outcome pairs exhibit appreciable pleiotropic heterogeneity and
+   enough instruments. `coheterogeneity_Q()` enforces a minimum instrument count
+   per pair via `min_K_pair` and returns a diagnostic `flag` when a pair is
+   degenerate or unstable.
 
 ## Example
 
