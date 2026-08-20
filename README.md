@@ -30,9 +30,6 @@ into the instrument-borrowing estimators.
 
 ![IBMR graphical summary](man/figures/ibmr-graphical-summary.png)
 
-<!-- NOTE: replace man/figures/ibmr-graphical-summary.png with the updated
-     figure from the current version of the paper. -->
-
 ## Installation
 
 Install from GitHub with:

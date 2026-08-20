@@ -1,75 +1,130 @@
-#' MR-PRESSO with Instrument Borrowing
+#' IB-PRESSO: instrument borrowing for outlier-robust Mendelian randomization
 #'
-#' Performs Mendelian Randomization Pleiotropy RESidual Sum and Outlier (MR-PRESSO)
-#' test extended for instrument borrowing scenarios. Detects and corrects for
-#' horizontal pleiotropy using an auxiliary trait to identify outlier instruments.
+#' Extends MR-PRESSO (Verbanck et al., 2018) by scoring each instrument on a
+#' primary outcome AND an auxiliary outcome simultaneously. Every other element
+#' of the procedure -- leave-one-out IVW fitting through the origin, the global
+#' heterogeneity bootstrap, the Bonferroni correction across instruments, and
+#' the outlier-corrected IVW estimate -- is MR-PRESSO's, unchanged, so that any
+#' difference in performance is attributable to the auxiliary trait and to
+#' nothing else.
 #'
-#' @param BetaOutcome Character, column name for primary outcome SNP effects
-#' @param BetaExposure Character or vector, column name(s) for exposure SNP effects
-#' @param BetaAux Character, column name for auxiliary trait SNP effects (borrowed instrument)
-#' @param SdOutcome Character, column name for standard errors of outcome effects
-#' @param SdExposure Character or vector, column name(s) for standard errors of exposure effects
-#' @param SdAux Character, column name for standard errors of auxiliary trait effects
-#' @param data Data frame containing all the above columns
-#' @param OUTLIERtest Logical, whether to perform outlier detection (default: FALSE)
-#' @param DISTORTIONtest Logical, whether to test if outliers cause distortion (default: FALSE)
-#' @param SignifThreshold Numeric, significance threshold for tests (default: 0.05)
-#' @param NbDistribution Integer, number of null distributions to generate (default: 1000)
-#' @param seed Integer, random seed for reproducibility (default: NULL)
-#' @param n_cores Integer, number of cores for parallel processing (default: 1)
+#' @section Per-SNP statistic:
+#' Let \eqn{r_{1j}} and \eqn{r_{2j}} be the leave-one-out residuals of the
+#' primary and auxiliary outcomes at instrument \eqn{j}, on the raw scale of the
+#' reported effect estimates. Conditional on the leave-one-out slopes
+#' \eqn{b_{1,-j}} and \eqn{b_{2,-j}} their sampling covariance is known:
+#' \deqn{V_j = \begin{pmatrix} s_{Y_1j}^2 + b_{1,-j}^2 s_{Xj}^2 &
+#'   \rho_j s_{Y_1j} s_{Y_2j} + b_{1,-j} b_{2,-j} s_{Xj}^2 \\
+#'   \rho_j s_{Y_1j} s_{Y_2j} + b_{1,-j} b_{2,-j} s_{Xj}^2 &
+#'   s_{Y_2j}^2 + b_{2,-j}^2 s_{Xj}^2 \end{pmatrix},}
+#' and the statistic is the generalized squared residual
+#' \deqn{T_j = (r_{1j}, r_{2j}) V_j^{-1} (r_{1j}, r_{2j})^\top
+#'  = \frac{v_{2j} r_{1j}^2 - 2 c_{12,j} r_{1j} r_{2j} + v_{1j} r_{2j}^2}
+#'         {v_{1j} v_{2j} - c_{12,j}^2}.}
+#' MR-PRESSO's statistic is the primary term alone. Two dependence sources enter
+#' \eqn{V_j}, each exactly once: outcome-GWAS sample overlap through
+#' \eqn{\rho_j}, and shared exposure noise through \eqn{b_{1,-j} b_{2,-j}
+#' s_{Xj}^2}, which is present even when \eqn{\rho_j = 0}.
 #'
-#' @return A list containing:
-#' \item{raw_beta}{Raw causal effect estimate before outlier correction}
-#' \item{raw_se}{Standard error of raw estimate}
-#' \item{corrected_beta}{Outlier-corrected causal effect estimate (if outliers detected)}
-#' \item{corrected_se}{Standard error of corrected estimate}
-#' \item{p_value}{Global test p-value for horizontal pleiotropy}
-#' \item{p_distort}{P-value for distortion test (if DISTORTIONtest = TRUE)}
-#' \item{outlier_idx}{Indices of detected outlier instruments}
-#' \item{n_instruments}{Number of instruments used}
-#' \item{n_outliers}{Number of outliers detected}
+#' @section Why the covariance is not estimated:
+#' \eqn{V_j} is built from the reported GWAS standard errors and a cross-trait
+#' LDSC intercept, never from the observed residuals. Estimating a
+#' \eqn{2 \times 2} residual covariance (robustly or otherwise) fails in three
+#' ways: the invalid instruments inflate the estimate along precisely the
+#' direction that identifies them; the resulting Mahalanobis distance is bounded
+#' by \eqn{1/\pi} where \eqn{\pi} is the fraction of invalid instruments, so at
+#' \eqn{\pi = 0.5} no instrument can exceed 2 against a cutoff of 5.99; and the
+#' minimum covariance determinant has a breakdown point of 50 percent.
 #'
-#' @details
-#' This function extends MR-PRESSO to handle instrument borrowing by incorporating
-#' an auxiliary trait. It uses leave-one-out cross-validation and Mahalanobis
-#' distance in a bivariate residual space (outcome + auxiliary trait) to detect
-#' pleiotropic outliers. The global test assesses overall horizontal pleiotropy,
-#' while the distortion test evaluates whether removing outliers significantly
-#' changes the causal estimate.
+#' @section Reference distributions:
+#' \eqn{T_j} is pivotal -- a quadratic form in a bivariate normal with known
+#' covariance -- so conditional on the leave-one-out slopes its null is exactly
+#' \eqn{\chi^2_2} and the per-SNP p-value is analytic by default. This removes
+#' the bootstrap resolution floor of \eqn{K/\code{NbDistribution}}, which at
+#' \eqn{K = 1270} and 10000 draws is 0.127 and makes flagging impossible at any
+#' sane threshold. The GLOBAL test keeps the bootstrap, because the
+#' leave-one-out slopes are refitted on every draw and \eqn{\sum_j T_j} has no
+#' closed form. Setting `OutlierTestMethod = "bootstrap"` restores the previous
+#' per-SNP behaviour; both sets of p-values are always returned.
 #'
-#' @importFrom MASS cov.rob
-#' @importFrom stats lm coef var predict quantile mahalanobis rnorm complete.cases qchisq as.formula setNames update
-#' @importFrom utils globalVariables
+#' Neither route propagates the uncertainty in the leave-one-out slopes, so on
+#' self-fitted null data \eqn{T_j} is inflated by roughly \eqn{1 + 2/K}
+#' (measured mean 2.03 at \eqn{K = 100}, 2.02 at \eqn{K = 200}, against 2).
+#'
+#' @section Weights:
+#' Two weights, with a deliberate division of labour.
+#' \eqn{W_j = 1/(s_{Y_1j} s_{Y_2j})} fits the leave-one-out slopes, a single
+#' weight applied to both outcomes so that neither trait is privileged; it does
+#' not enter the statistic, since \eqn{V_j} carries all the scaling. The causal
+#' estimate is an IVW fit weighted by \eqn{1/s_{Y_1j}^2}, which is MR-PRESSO's
+#' own weight; the final estimator is therefore identical to MR-PRESSO's and the
+#' two methods differ only in which instruments they retain.
+#'
+#' @param BetaOutcome Character, column name for primary outcome SNP effects.
+#' @param BetaExposure Character, column name for exposure SNP effects (one only).
+#' @param BetaAux Character, column name for auxiliary trait SNP effects.
+#' @param SdOutcome Character, column name for standard errors of outcome effects.
+#' @param SdExposure Character, column name for standard errors of exposure effects.
+#' @param SdAux Character, column name for standard errors of auxiliary effects.
+#' @param data Data frame containing all the above columns, one row per instrument.
+#' @param OUTLIERtest Logical; perform the per-SNP outlier test and report the
+#'   corrected estimate. Default `TRUE`.
+#' @param DISTORTIONtest Logical; test whether the removed instruments distort
+#'   the estimate more than a random set of the same size. Default `FALSE`.
+#' @param SignifThreshold Numeric significance threshold, Bonferroni-corrected
+#'   across instruments for the per-SNP test. Default 0.05.
+#' @param NbDistribution Integer, number of bootstrap null datasets for the
+#'   GLOBAL test. Default 10000.
+#' @param seed Integer random seed, or `NULL`.
+#' @param n_cores Retained for backward compatibility and ignored.
+#' @param CorOutcomeAux Cross-outcome sampling correlation \eqn{\rho_j}: the
+#'   cross-trait LDSC intercept on the CORRELATION scale,
+#'   \eqn{I_{12}/\sqrt{I_{11} I_{22}}}. Scalar, or a vector of length
+#'   `nrow(data)` or of the number of complete instruments. Must lie strictly
+#'   inside \eqn{(-1, 1)}; a raw LDSC intercept generally does not, and is not a
+#'   correlation. Default 0, which reproduces independent outcome GWAS.
+#' @param OutlierTestMethod `"chisq"` (default) for the analytic per-SNP null,
+#'   or `"bootstrap"` for the previous Monte Carlo route.
+#'
+#' @return An object of class `mrpresso_ib`, a list with components:
+#' \item{raw_beta, raw_se}{IVW estimate and standard error using all instruments.}
+#' \item{corrected_beta, corrected_se}{Outlier-corrected estimate, or `NA` when
+#'   no outlier was removed. Callers should fall back to the raw estimate.}
+#' \item{p_value}{Global heterogeneity test p-value (bootstrap).}
+#' \item{p_distort}{Distortion test p-value, or `NA`.}
+#' \item{outlier_idx}{Row indices of the removed instruments.}
+#' \item{outlyingness}{Observed per-SNP statistic \eqn{T_j}.}
+#' \item{outlier_pvals}{Bonferroni-corrected per-SNP p-values that were used for
+#'   flagging; a copy of whichever of the next two `outlier_test_method` names.}
+#' \item{outlier_test_method}{`"chisq"` or `"bootstrap"`.}
+#' \item{outlier_pvals_chisq}{Analytic per-SNP p-values. Always computed.}
+#' \item{outlier_pvals_boot}{Bootstrap per-SNP p-values, or all `NA` when the
+#'   analytic route was used.}
+#' \item{outcome_correlation}{The \eqn{\rho_j} actually used, after alignment.}
+#' \item{covariance_model}{Free-text description of the covariance assumption.}
+#' \item{n_instruments, n_outliers}{Counts.}
+#'
+#' @references
+#' Verbanck M, Chen CY, Neale B, Do R (2018). Detection of widespread horizontal
+#' pleiotropy in causal relationships inferred from Mendelian randomization
+#' between complex traits and diseases. \emph{Nature Genetics} 50, 693-698.
+#'
+#' @importFrom stats lm coef complete.cases rnorm as.formula pchisq
 #' @export
 #'
 #' @examples
-#' \dontrun{
-#' # Simulate data
-#' set.seed(123)
-#' n_snps <- 50
-#' dat <- data.frame(
-#'   beta_exposure = rnorm(n_snps, 0.1, 0.02),
-#'   beta_outcome = rnorm(n_snps, 0.05, 0.03),
-#'   beta_aux = rnorm(n_snps, 0.04, 0.025),
-#'   se_exposure = abs(rnorm(n_snps, 0.01, 0.002)),
-#'   se_outcome = abs(rnorm(n_snps, 0.015, 0.003)),
-#'   se_aux = abs(rnorm(n_snps, 0.012, 0.002))
+#' set.seed(1)
+#' K <- 40
+#' bx <- runif(K, 0.02, 0.05)
+#' g  <- c(rnorm(12, 0.012, 0.004), rep(0, K - 12))
+#' d  <- data.frame(
+#'   BetaExposure = rnorm(K, bx, 1/sqrt(1e5)),  SdExposure = 1/sqrt(1e5),
+#'   BetaOutcome  = rnorm(K, 0.1 * bx + g, 1/sqrt(5e4)), SdOutcome = 1/sqrt(5e4),
+#'   BetaAux      = rnorm(K, 0.3 * bx + g, 1/sqrt(1e5)), SdAux     = 1/sqrt(1e5)
 #' )
-#'
-#' # Run MR-PRESSO with instrument borrowing
-#' results <- IBPRESSO(
-#'   BetaOutcome = "beta_outcome",
-#'   BetaExposure = "beta_exposure",
-#'   BetaAux = "beta_aux",
-#'   SdOutcome = "se_outcome",
-#'   SdExposure = "se_exposure",
-#'   SdAux = "se_aux",
-#'   data = dat,
-#'   OUTLIERtest = TRUE,
-#'   DISTORTIONtest = TRUE,
-#'   NbDistribution = 1000
-#' )
-#' }
+#' IBPRESSO("BetaOutcome", "BetaExposure", "BetaAux",
+#'          "SdOutcome", "SdExposure", "SdAux",
+#'          data = d, NbDistribution = 2000, seed = 1, CorOutcomeAux = 0.3)
 IBPRESSO <- function(
     BetaOutcome,
     BetaExposure,
@@ -78,341 +133,327 @@ IBPRESSO <- function(
     SdExposure,
     SdAux,
     data,
-    OUTLIERtest = FALSE,
-    DISTORTIONtest = FALSE,
+    OUTLIERtest     = TRUE,
+    DISTORTIONtest  = FALSE,
     SignifThreshold = 0.05,
-    NbDistribution = 1000,
-    seed = NULL,
-    n_cores = 1
+    NbDistribution  = 10000,
+    seed            = NULL,
+    n_cores         = 1,       # retained for compatibility; ignored
+    ## Cross-outcome sampling CORRELATION rho_j.  This is the cross-trait LDSC
+    ## intercept on the correlation scale, i.e. I12 / sqrt(I11 * I22); see
+    ## ldsc_cor12() in RDA_code/ldsc_cov_helper.R.  It is NOT IB-Mode's
+    ## `cov_ratio`, which is a per-SNP covariance of Wald RATIOS on a different
+    ## scale entirely.  Scalar, or a vector of length nrow(data) or of the
+    ## number of complete instruments.  The default 0 reproduces independent
+    ## outcome GWAS, so existing simulation calls are unaffected.
+    CorOutcomeAux   = 0,
+    ## Reference distribution for the PER-SNP test only; the global test is
+    ## always the bootstrap.  "chisq" uses the exact pivotal null and is the
+    ## default.  "bootstrap" reproduces the previous behaviour and is retained
+    ## as a secondary option for comparison.
+    OutlierTestMethod = c("chisq", "bootstrap")
 ) {
 
-  # Check required packages
-  if (!requireNamespace("MASS", quietly = TRUE)) {
-    stop("Package 'MASS' is required. Please install it with: install.packages('MASS')")
-  }
-
-  if (n_cores > 1 && !requireNamespace("parallel", quietly = TRUE)) {
-    stop("Package 'parallel' is required for multi-core processing. Please install it with: install.packages('parallel')")
-  }
-
-  # Set seed if provided
   if (!is.null(seed)) set.seed(seed)
 
-  # Input validation
-  required_cols <- c(BetaExposure, BetaOutcome, BetaAux, SdExposure, SdOutcome, SdAux)
-  missing_cols <- setdiff(required_cols, colnames(data))
-  if (length(missing_cols) > 0) {
-    stop(paste("Missing columns in data:", paste(missing_cols, collapse = ", ")))
+  OutlierTestMethod <- match.arg(OutlierTestMethod)
+  use_boot_snp      <- identical(OutlierTestMethod, "bootstrap")
+
+  if (length(BetaExposure) != 1L || length(SdExposure) != 1L)
+    stop("mr_presso_ib handles a single exposure; BetaExposure and SdExposure ",
+         "must each name exactly one column.")
+
+  need <- c(BetaOutcome, BetaExposure, BetaAux, SdOutcome, SdExposure, SdAux)
+  miss <- setdiff(need, colnames(data))
+  if (length(miss))
+    stop("missing columns: ", paste(miss, collapse = ", "))
+
+  ## Keep the complete-case INDEX, not just the filtered frame, so a per-SNP
+  ## CorOutcomeAux supplied on the original rows can be aligned to it.
+  d0 <- data[, need, drop = FALSE]
+  cc <- stats::complete.cases(d0)
+  d  <- d0[cc, , drop = FALSE]
+
+  K <- nrow(d)
+  if (K <= 3)
+    stop("not enough instruments: need at least 4 complete rows, got ", K, ".")
+
+  #--------------------------------------------------------------------------#
+  # Cross-outcome sampling correlation
+  #--------------------------------------------------------------------------#
+  rho <- CorOutcomeAux
+  ## A vector aligned to the ORIGINAL rows is subset first, so that a caller
+  ## who supplies per-SNP values does not have to know about the complete-case
+  ## filter.  A scalar (the normal RDA case) is recycled afterwards.
+  if (length(rho) == nrow(data)) rho <- rho[cc]
+  if (length(rho) == 1L)         rho <- rep(rho, K)
+
+  if (!is.numeric(rho) || length(rho) != K || any(!is.finite(rho)))
+    stop("CorOutcomeAux must be finite and have length 1, nrow(data), ",
+         "or the number of complete instruments.")
+
+  ## Do NOT silently clamp.  An |I12| >= 1 means either the intercept was not
+  ## normalised by sqrt(I11 * I22) -- 4 pairs in LDSC_intercepts.csv exceed 1
+  ## on the raw scale and none do after normalising -- or the LDSC fit is not
+  ## usable for this pair.  Both need a decision, not a quiet rescue.
+  if (any(abs(rho) >= 1))
+    stop("CorOutcomeAux must be strictly between -1 and 1; the supplied value ",
+         "does not define a positive-definite outcome sampling covariance. ",
+         "A RAW cross-trait LDSC intercept is not a correlation unless the ",
+         "univariate intercepts equal 1 -- use I12 / sqrt(I11 * I22), i.e. ",
+         "ldsc_cor12() rather than ldsc_I12().")
+
+  ## Same warning MR-PRESSO issues (mr_presso.R, line 126), and for the same
+  ## reason.  The bootstrap tail is a multiple of 1/NbDistribution, so once
+  ## K / NbDistribution exceeds SignifThreshold the Bonferroni-corrected p-value
+  ## can only clear the threshold by being exactly zero -- that is, the observed
+  ## statistic must beat every null draw.  The per-SNP test then runs at an
+  ## effective level of about 1/NbDistribution instead of the intended
+  ## SignifThreshold/K.  It still fires, but not at its nominal level.
+  ## This warns rather than stops: callers wrap the fit in tryCatch(), so an
+  ## error would silently become NA and drop the replicate.
+  ##
+  ## Only relevant on the "bootstrap" route.  The analytic chi-square p-value
+  ## has no resolution floor, which is the main practical reason it is the
+  ## default; the global test keeps a 1/NbDistribution floor either way, but
+  ## that is a single test and is not multiplied by K.
+  if (OUTLIERtest && use_boot_snp && K / NbDistribution > SignifThreshold)
+    warning("NbDistribution is small relative to the number of instruments: ",
+            "K / NbDistribution = ", signif(K / NbDistribution, 3), " exceeds ",
+            "SignifThreshold = ", SignifThreshold, ", so the per-SNP outlier ",
+            "test is below its nominal level. Use NbDistribution >= ",
+            ceiling(K / SignifThreshold), ".", call. = FALSE)
+
+  #--------------------------------------------------------------------------#
+  # Raw-scale summary statistics.  The statistic is built on the raw scale
+  # because V_j is expressed in the units of the reported effect estimates.
+  #--------------------------------------------------------------------------#
+  bx <- d[[BetaExposure]]
+  by <- d[[BetaOutcome]]
+  ba <- d[[BetaAux]]
+
+  sx <- d[[SdExposure]]
+  sy <- d[[SdOutcome]]
+  sa <- d[[SdAux]]
+
+  if (any(!is.finite(c(bx, by, ba, sx, sy, sa))) ||
+      any(sx <= 0) || any(sy <= 0) || any(sa <= 0))
+    stop("Effect estimates must be finite and all standard errors must be ",
+         "positive.")
+
+  ## Symmetric weight, used ONLY to fit the leave-one-out slopes.
+  W <- 1 / (sy * sa)
+
+  ## MR-PRESSO's primary-outcome weight, used ONLY for the final causal fit.
+  d$.ibmr_w1 <- 1 / sy^2
+
+  #--------------------------------------------------------------------------#
+  # Leave-one-out IVW slopes through the origin.
+  # Algebraically identical to regressing sqrt(W)-scaled variables, in closed
+  # form rather than by refitting K models.
+  #--------------------------------------------------------------------------#
+  loo <- function(x, y) {
+    total_xx <- sum(W * x^2)
+    total_xy <- sum(W * x * y)
+
+    den <- total_xx - W * x^2
+    num <- total_xy - W * x * y
+
+    tol <- 100 * .Machine$double.eps * max(1, total_xx)
+
+    if (any(!is.finite(den)) || any(den <= tol))
+      stop("Leave-one-out slope is undefined because there is insufficient ",
+           "weighted exposure variation.")
+
+    num / den
   }
 
-  # Prepare core dataset
-  core <- data[, required_cols, drop = FALSE]
-  core <- core[complete.cases(core), ]
+  sl_y <- loo(bx, by)
+  sl_a <- loo(bx, ba)
 
-  if (nrow(core) == 0) {
-    stop("No complete cases found in the data")
+  #--------------------------------------------------------------------------#
+  # Analytic residual covariance V_j and the 2x2 quadratic form.
+  #
+  # V_parts() builds the three distinct entries plus the determinant; quad()
+  # evaluates the form.  They are separated so the PER-SNP branch, whose V is
+  # constant across bootstrap draws, can build it once instead of 10,000 times.
+  # stat_cov() is the combined entry point, used where the slopes vary.
+  #--------------------------------------------------------------------------#
+  V_parts <- function(slope_y, slope_a) {
+    v_y  <- sy^2 + slope_y^2 * sx^2
+    v_a  <- sa^2 + slope_a^2 * sx^2
+    c_ya <- rho * sy * sa + slope_y * slope_a * sx^2
+
+    det_v <- v_y * v_a - c_ya^2
+
+    tol <- 100 * .Machine$double.eps *
+      pmax(v_y * v_a, .Machine$double.xmin)
+
+    if (any(!is.finite(v_y)) || any(!is.finite(v_a)) ||
+        any(!is.finite(c_ya)) || any(!is.finite(det_v)) ||
+        any(det_v <= tol))
+      stop("The residual sampling covariance is not positive definite. ",
+           "Check CorOutcomeAux and the supplied standard errors.")
+
+    list(v_y = v_y, v_a = v_a, c_ya = c_ya, det_v = det_v)
   }
 
-  # Compute weights
-  core$Weights <- 1 / (core[[SdOutcome]] * core[[SdAux]])
-  core$Weights1 <- 1 / (core[[SdOutcome]]^2)
+  quad <- function(r_y, r_a, P)
+    (P$v_a * r_y^2 - 2 * P$c_ya * r_y * r_a + P$v_y * r_a^2) / P$det_v
 
-  n_instruments <- nrow(core)
-  n_params <- length(BetaExposure)
+  stat_cov <- function(r_y, r_a, slope_y, slope_a)
+    quad(r_y, r_a, V_parts(slope_y, slope_a))
 
-  if (n_instruments <= n_params + 2) {
-    stop(paste0("Insufficient instruments. Need at least ", n_params + 3,
-                " instruments, but only ", n_instruments, " available."))
+  V_obs <- V_parts(sl_y, sl_a)
+  T_obs <- quad(by - sl_y * bx, ba - sl_a * bx, V_obs)
+
+  #--------------------------------------------------------------------------#
+  # Parametric bootstrap null, following MR-PRESSO's construction:
+  # outcomes are drawn about the OBSERVED leave-one-out fit, and the residual is
+  # then formed against the RESAMPLED exposure.
+  #
+  # Two null quantities, because mr_presso builds its two tests differently:
+  #   per-SNP  : residual formed with the OBSERVED leave-one-out slope
+  #              (mr_presso.R, `Exp <- randomSNP[,Y] - randomSNP[,X]*RSSobs[[2]][SNV]`)
+  #   global   : leave-one-out slopes REFITTED on each bootstrap dataset
+  #              (mr_presso.R, `RSSexp <- sapply(randomData, getRSS_LOO, ...)`)
+  # Refitting is done to MATCH mr_presso, and NOT on any claim about which way
+  # it moves the test.  An earlier version of this comment asserted that fixed
+  # slopes inflate the null and make the test conservative; that was backwards.
+  # In a null experiment refitting produced the LARGER mean statistic and
+  # exceeded the fixed-slope statistic in about 84% of draws.  The direction is
+  # therefore left unstated.
+  #
+  # THREE independent standard normals per draw, one per GWAS.  The exposure is
+  # assumed independent of both outcomes; the two outcomes are coupled through
+  # rho by the standard Cholesky construction (rho z_y + sqrt(1-rho^2) z_a),
+  # which gives corr(e_y, e_a) = rho exactly.  The shared exposure error enters
+  # separately, through the single bx_b used in BOTH residuals -- so neither
+  # dependence source is double counted.
+  #--------------------------------------------------------------------------#
+  ## The NbDistribution x K matrix is allocated ONLY on the bootstrap route.
+  ## At K = 1270 and NbDistribution = 10000 it is 127 MB, which is the single
+  ## largest allocation in the function.
+  T_null   <- if (use_boot_snp) matrix(NA_real_, NbDistribution, K) else NULL
+  RSS_null <- numeric(NbDistribution)               # global : refitted slopes
+
+  rho_scale <- sqrt(1 - rho^2)
+
+  for (b in seq_len(NbDistribution)) {
+
+    z_x <- stats::rnorm(K)
+    z_y <- stats::rnorm(K)
+    z_a <- stats::rnorm(K)
+
+    bx_b <- bx + sx * z_x
+    by_b <- sl_y * bx + sy * z_y
+    ba_b <- sl_a * bx + sa * (rho * z_y + rho_scale * z_a)
+
+    ## Per-SNP null: observed slopes, hence V_obs, fixed across draws.
+    if (use_boot_snp)
+      T_null[b, ] <- quad(by_b - sl_y * bx_b, ba_b - sl_a * bx_b, V_obs)
+
+    ## Global null: refit both slope vectors, and rebuild V from them so the
+    ## null dataset is treated exactly as the observed one was.
+    sl_y_b <- loo(bx_b, by_b)
+    sl_a_b <- loo(bx_b, ba_b)
+
+    RSS_null[b] <- sum(stat_cov(by_b - sl_y_b * bx_b,
+                                ba_b - sl_a_b * bx_b,
+                                sl_y_b, sl_a_b))
   }
 
-  message(paste0("Running MR-PRESSO-IB with ", n_instruments, " instruments..."))
+  ## GLOBAL test: bootstrap, strict '>' as in mr_presso.  Not analytic, because
+  ## the leave-one-out slopes are refitted on every draw.
+  p_global <- mean(RSS_null > sum(T_obs), na.rm = TRUE)
 
-  #--------------------------------------#
-  # Helper: Robust covariance estimation
-  #--------------------------------------#
-  compute_robust_cov <- function(mat) {
-    covmat <- tryCatch({
-      MASS::cov.rob(mat, method = "mcd")$cov
-    }, error = function(e) NULL)
+  #--------------------------------------------------------------------------#
+  # PER-SNP p-values.  Both are always computed when available, and both are
+  # returned; OutlierTestMethod selects which one FLAGS.
+  #
+  # Bonferroni across instruments in both cases, exactly as MR-PRESSO does
+  # (mr_presso.R, line 83), so the two are on the same scale and directly
+  # comparable to MR-PRESSO's.
+  #--------------------------------------------------------------------------#
+  p_snp_chisq <- pmin(stats::pchisq(T_obs, df = 2, lower.tail = FALSE) * K, 1)
 
-    # Fallback to diagonal if robust estimation fails
-    if (is.null(covmat) || any(is.na(covmat)) || det(covmat) <= 0) {
-      v1 <- var(mat[, 1], na.rm = TRUE)
-      v2 <- var(mat[, 2], na.rm = TRUE)
-      covmat <- matrix(c(v1, 0, 0, v2), 2, 2)
-    }
-    return(covmat)
-  }
-
-  #--------------------------------------#
-  # Helper: Leave-one-out predictions
-  #--------------------------------------#
-  predict_loo <- function(B_loo, X) {
-    n_params <- ncol(X)
-    Bp <- B_loo[, 1:n_params, drop = FALSE]
-    Ba <- B_loo[, (n_params + 1):(2 * n_params), drop = FALSE]
-
-    pred_primary <- rowSums(Bp * X)
-    pred_aux <- rowSums(Ba * X)
-
-    list(pred_primary = pred_primary, pred_aux = pred_aux)
-  }
-
-  #--------------------------------------#
-  # Helper: Compute RSS using leave-one-out
-  #--------------------------------------#
-  compute_rss_loo <- function(d, return_details = FALSE) {
-    # Prepare weighted data
-    X <- as.matrix(d[, BetaExposure, drop = FALSE]) * sqrt(d$Weights)
-    Y_primary <- d[[BetaOutcome]] * sqrt(d$Weights)
-    Y_aux <- d[[BetaAux]] * sqrt(d$Weights)
-
-    n <- nrow(X)
-    n_params <- ncol(X)
-
-    # Leave-one-out coefficient estimation
-    B_loo <- matrix(NA, nrow = n, ncol = 2 * n_params)
-
-    for (i in seq_len(n)) {
-      X_loo <- X[-i, , drop = FALSE]
-      Y_primary_loo <- Y_primary[-i]
-      Y_aux_loo <- Y_aux[-i]
-
-      # Solve for coefficients
-      XtX_inv <- tryCatch(
-        solve(t(X_loo) %*% X_loo),
-        error = function(e) NULL
-      )
-
-      if (!is.null(XtX_inv)) {
-        beta_primary <- XtX_inv %*% t(X_loo) %*% Y_primary_loo
-        beta_aux <- XtX_inv %*% t(X_loo) %*% Y_aux_loo
-        B_loo[i, ] <- c(beta_primary, beta_aux)
-      }
-    }
-
-    # Compute predictions and residuals
-    predictions <- predict_loo(B_loo, X)
-    residuals <- cbind(
-      Y_primary - predictions$pred_primary,
-      Y_aux - predictions$pred_aux
-    )
-
-    # Robust covariance of residuals
-    cov_residuals <- compute_robust_cov(residuals)
-
-    # Mahalanobis distance (multivariate outlier detection)
-    mahal_dist <- mahalanobis(
-      residuals,
-      center = c(0, 0),
-      cov = cov_residuals,
-      inverted = FALSE
-    )
-
-    RSS <- sum(mahal_dist, na.rm = TRUE)
-
-    if (return_details) {
-      list(
-        RSS = RSS,
-        B_loo = B_loo,
-        cov_residuals = cov_residuals,
-        residuals = residuals,
-        mahal_dist = mahal_dist
-      )
-    } else {
-      RSS
-    }
-  }
-
-  #--------------------------------------#
-  # Helper: Generate random dataset under null
-  #--------------------------------------#
-  generate_null_data <- function(d) {
-    n <- nrow(d)
-
-    # Simulate exposure values
-    X_sim <- rnorm(n, d[[BetaExposure]], d[[SdExposure]])
-
-    # Fit leave-one-out models
-    models_primary <- lapply(seq_len(n), function(i) {
-      lm(
-        as.formula(paste0(BetaOutcome, " ~ -1 + ", BetaExposure)),
-        weights = Weights,
-        data = d[-i, ]
-      )
-    })
-
-    models_aux <- lapply(seq_len(n), function(i) {
-      lm(
-        as.formula(paste0(BetaAux, " ~ -1 + ", BetaExposure)),
-        weights = Weights,
-        data = d[-i, ]
-      )
-    })
-
-    # Simulate outcomes based on LOO predictions
-    Y_primary_sim <- mapply(
-      function(model, x_val, se) {
-        pred <- predict(model, newdata = setNames(data.frame(x_val), BetaExposure))
-        rnorm(1, pred, se)
-      },
-      models_primary, X_sim, d[[SdOutcome]]
-    )
-
-    Y_aux_sim <- mapply(
-      function(model, x_val, se) {
-        pred <- predict(model, newdata = setNames(data.frame(x_val), BetaExposure))
-        rnorm(1, pred, se)
-      },
-      models_aux, X_sim, d[[SdAux]]
-    )
-
-    # Create simulated dataset
-    sim_data <- d
-    sim_data[[BetaExposure]] <- X_sim
-    sim_data[[BetaOutcome]] <- Y_primary_sim
-    sim_data[[BetaAux]] <- Y_aux_sim
-    sim_data$Weights <- 1 / (d[[SdOutcome]] * d[[SdAux]])
-
-    return(sim_data)
-  }
-
-  #--------------------------------------#
-  # Main computation: Generate null distribution
-  #--------------------------------------#
-  message(paste0("Generating ", NbDistribution, " null distributions..."))
-
-  if (n_cores > 1) {
-    simulated_data <- parallel::mclapply(
-      1:NbDistribution,
-      function(i) generate_null_data(core),
-      mc.cores = n_cores
-    )
-    RSS_null <- unlist(parallel::mclapply(
-      simulated_data,
-      compute_rss_loo,
-      mc.cores = n_cores
-    ))
+  p_snp_boot <- if (use_boot_snp) {
+    pmin(colMeans(sweep(T_null, 2, T_obs, ">"), na.rm = TRUE) * K, 1)
   } else {
-    simulated_data <- replicate(NbDistribution, generate_null_data(core), simplify = FALSE)
-    RSS_null <- sapply(simulated_data, compute_rss_loo)
+    rep(NA_real_, K)
   }
 
-  #--------------------------------------#
-  # Observed statistics
-  #--------------------------------------#
-  obs_results <- compute_rss_loo(core, return_details = OUTLIERtest)
-  RSS_observed <- if (OUTLIERtest) obs_results$RSS else obs_results
+  p_snp <- if (use_boot_snp) p_snp_boot else p_snp_chisq
 
-  # Global test p-value
-  p_global <- mean(RSS_null >= RSS_observed)
+  #--------------------------------------------------------------------------#
+  # Causal estimate.  lm() with MR-PRESSO's weights, so the standard error
+  # follows the same convention (residual scale included) and the two methods
+  # remain comparable on type-I error.
+  #--------------------------------------------------------------------------#
+  form     <- stats::as.formula(paste0(BetaOutcome, " ~ -1 + ", BetaExposure))
+  fit_full <- stats::lm(form, weights = d$.ibmr_w1, data = d)
+  beta_raw <- unname(stats::coef(fit_full)[1])
+  se_raw   <- unname(summary(fit_full)$coefficients[1, "Std. Error"])
 
-  # Fit full model (without outlier removal)
-  fit_full <- lm(
-    as.formula(paste0(BetaOutcome, " ~ -1 + ", BetaExposure)),
-    weights = Weights1,
-    data = core
-  )
+  outlier_indices <- integer(0)
+  beta_corrected  <- NA_real_
+  se_corrected    <- NA_real_
 
-  beta_raw <- coef(fit_full)[1]
-  se_raw <- summary(fit_full)$coefficients[1, "Std. Error"]
-
-  # Initialize corrected estimates
-  beta_corrected <- NA
-  se_corrected <- NA
-  outlier_indices <- NULL
-  n_outliers <- 0
-
-  #--------------------------------------#
-  # Outlier detection and correction
-  #--------------------------------------#
   if (OUTLIERtest && p_global < SignifThreshold) {
-    message("Significant pleiotropy detected. Identifying outliers...")
-
-    mahal_dist <- obs_results$mahal_dist
-    outlier_indices <- which(mahal_dist > qchisq(1 - SignifThreshold, df = 2))  # D^2 ~ chi^2_2 under validity
-    n_outliers <- length(outlier_indices)
-
-    if (n_outliers > 0 && n_outliers < nrow(core)) {
-      message(paste0("Found ", n_outliers, " outlier(s). Re-estimating without outliers..."))
-
-      fit_corrected <- lm(
-        as.formula(paste0(BetaOutcome, " ~ -1 + ", BetaExposure)),
-        weights = Weights1,
-        data = core[-outlier_indices, ]
-      )
-
-      beta_corrected <- coef(fit_corrected)[1]
-      se_corrected <- summary(fit_corrected)$coefficients[1, "Std. Error"]
-    } else {
-      message("No valid outliers to remove or too many outliers detected.")
+    outlier_indices <- which(p_snp <= SignifThreshold)
+    keep <- setdiff(seq_len(K), outlier_indices)
+    if (length(outlier_indices) > 0 && length(keep) >= 3) {
+      fit_trim       <- stats::lm(form, weights = d$.ibmr_w1[keep], data = d[keep, ])
+      beta_corrected <- unname(stats::coef(fit_trim)[1])
+      se_corrected   <- unname(summary(fit_trim)$coefficients[1, "Std. Error"])
     }
   }
+  n_outliers <- length(outlier_indices)
 
-  #--------------------------------------#
+  #--------------------------------------------------------------------------#
   # Distortion test
-  #--------------------------------------#
-  p_distortion <- NA
-
-  if (DISTORTIONtest && !is.na(beta_corrected)) {
-    message("Running distortion test...")
-
+  #--------------------------------------------------------------------------#
+  p_distortion <- NA_real_
+  if (DISTORTIONtest && !is.na(beta_corrected) && n_outliers > 0) {
     bias_observed <- (beta_raw - beta_corrected) / abs(beta_corrected)
-
-    # Generate null distribution of bias
     bias_null <- replicate(NbDistribution, {
-      random_indices <- sample(seq_len(nrow(core)), n_outliers)
-      fit_random <- update(fit_full, data = core[-random_indices, ])
-      beta_random <- coef(fit_random)[1]
-      (beta_raw - beta_random) / abs(beta_random)
+      drop_i <- sample(seq_len(K), n_outliers)
+      b_rand <- unname(stats::coef(stats::lm(form, weights = d$.ibmr_w1[-drop_i],
+                                             data = d[-drop_i, ]))[1])
+      (beta_raw - b_rand) / abs(b_rand)
     })
-
     p_distortion <- mean(abs(bias_null) >= abs(bias_observed), na.rm = TRUE)
   }
 
-  #--------------------------------------#
-  # Return results
-  #--------------------------------------#
-  message("Analysis complete.")
-
   results <- list(
-    raw_beta = beta_raw,
-    raw_se = se_raw,
-    corrected_beta = beta_corrected,
-    corrected_se = se_corrected,
-    p_value = p_global,
-    p_distort = p_distortion,
-    outlier_idx = outlier_indices,
-    n_instruments = n_instruments,
-    n_outliers = n_outliers
+    raw_beta       = beta_raw,
+    raw_se         = se_raw,
+    corrected_beta = beta_corrected,   # NA when nothing was removed
+    corrected_se   = se_corrected,     # NA when nothing was removed
+    p_value        = p_global,
+    p_distort      = p_distortion,
+    outlier_idx    = outlier_indices,
+    outlyingness   = T_obs,
+    outlier_pvals  = p_snp,
+    n_instruments  = K,
+    n_outliers     = n_outliers,
+
+    ## ---- audit fields -----------------------------------------------------
+    outcome_correlation = rho,
+    ## Which route FLAGGED.  outlier_pvals above is a copy of whichever of the
+    ## next two this names.
+    outlier_test_method = OutlierTestMethod,
+    ## Analytic per-SNP p-values.  Always computed.  T_obs is NOT claimed to be
+    ## chi-square in general -- the claim is that its null, conditional on the
+    ## observed leave-one-out slopes, is exactly chi^2_2.
+    outlier_pvals_chisq = p_snp_chisq,
+    ## Bootstrap per-SNP p-values.  All NA unless OutlierTestMethod =
+    ## "bootstrap", since the NbDistribution x K matrix is not built otherwise.
+    outlier_pvals_boot  = p_snp_boot,
+    covariance_model    = paste0("analytic residual covariance: outcome LDSC ",
+                                 "intercept + shared exposure error")
   )
 
   class(results) <- c("mrpresso_ib", "list")
-  return(results)
-}
-
-#' Print method for mrpresso_ib
-#' @param x An object of class mrpresso_ib
-#' @param ... Additional arguments (not used)
-#' @export
-print.mrpresso_ib <- function(x, ...) {
-  cat("MR-PRESSO with Instrument Borrowing Results\n")
-  cat("============================================\n\n")
-  cat(sprintf("Number of instruments: %d\n", x$n_instruments))
-  cat(sprintf("Global test p-value: %.4f\n\n", x$p_value))
-
-  cat("Raw estimate (before outlier correction):\n")
-  cat(sprintf("  Beta: %.4f (SE: %.4f)\n\n", x$raw_beta, x$raw_se))
-
-  if (!is.na(x$corrected_beta)) {
-    cat(sprintf("Number of outliers detected: %d\n", x$n_outliers))
-    cat("Corrected estimate (after outlier removal):\n")
-    cat(sprintf("  Beta: %.4f (SE: %.4f)\n\n", x$corrected_beta, x$corrected_se))
-
-    if (!is.na(x$p_distort)) {
-      cat(sprintf("Distortion test p-value: %.4f\n", x$p_distort))
-    }
-  } else {
-    cat("No outliers detected or correction not performed.\n")
-  }
+  results
 }

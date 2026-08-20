@@ -48,11 +48,11 @@ accounting for correlation induced by overlapping outcome GWAS samples. \code{NU
 A data frame containing:
 \item{Method}{Method name}
 \item{phi}{Bandwidth multiplier used}
-\item{Estimate.1, Estimate.2, ...}{Causal effect estimates for each outcome}
-\item{SE.1, SE.2, ...}{Standard errors for each outcome}
-\item{CI_low.1, CI_low.2, ...}{Lower confidence interval bounds}
-\item{CI_upp.1, CI_upp.2, ...}{Upper confidence interval bounds}
-\item{P.1, P.2, ...}{P-values for each outcome}
+\item{Estimate_\if{html}{\out{<outcome>}}}{Causal effect estimates for each outcome}
+\item{SE_\if{html}{\out{<outcome>}}}{Standard errors for each outcome}
+\item{CI_low_\if{html}{\out{<outcome>}}}{Lower confidence interval bounds}
+\item{CI_upp_\if{html}{\out{<outcome>}}}{Upper confidence interval bounds}
+\item{P_\if{html}{\out{<outcome>}}}{P-values for each outcome}
 }
 \description{
 Performs mode-based estimation (MBE) for multiple correlated outcomes simultaneously

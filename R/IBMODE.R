@@ -24,11 +24,11 @@
 #' @return A data frame containing:
 #' \item{Method}{Method name}
 #' \item{phi}{Bandwidth multiplier used}
-#' \item{Estimate.1, Estimate.2, ...}{Causal effect estimates for each outcome}
-#' \item{SE.1, SE.2, ...}{Standard errors for each outcome}
-#' \item{CI_low.1, CI_low.2, ...}{Lower confidence interval bounds}
-#' \item{CI_upp.1, CI_upp.2, ...}{Upper confidence interval bounds}
-#' \item{P.1, P.2, ...}{P-values for each outcome}
+#' \item{Estimate_<outcome>}{Causal effect estimates for each outcome}
+#' \item{SE_<outcome>}{Standard errors for each outcome}
+#' \item{CI_low_<outcome>}{Lower confidence interval bounds}
+#' \item{CI_upp_<outcome>}{Upper confidence interval bounds}
+#' \item{P_<outcome>}{P-values for each outcome}
 #'
 #' @details
 #' The function uses weighted multidimensional kernel density estimation to find the
