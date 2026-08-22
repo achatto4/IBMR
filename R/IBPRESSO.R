@@ -139,13 +139,9 @@ IBPRESSO <- function(
     NbDistribution  = 10000,
     seed            = NULL,
     n_cores         = 1,       # retained for compatibility; ignored
-    ## Cross-outcome sampling CORRELATION rho_j.  This is the cross-trait LDSC
-    ## intercept on the correlation scale, i.e. I12 / sqrt(I11 * I22); see
-    ## ldsc_cor12() in RDA_code/ldsc_cov_helper.R.  It is NOT IB-Mode's
-    ## `cov_ratio`, which is a per-SNP covariance of Wald RATIOS on a different
-    ## scale entirely.  Scalar, or a vector of length nrow(data) or of the
-    ## number of complete instruments.  The default 0 reproduces independent
-    ## outcome GWAS, so existing simulation calls are unaffected.
+    ## Cross-outcome sampling correlation: the cross-trait LDSC intercept on
+    ## the correlation scale, I12 / sqrt(I11 * I22).  Scalar, or a vector of
+    ## length nrow(data).  The default 0 assumes independent outcome GWAS.
     CorOutcomeAux   = 0,
     ## Reference distribution for the PER-SNP test only; the global test is
     ## always the bootstrap.  "chisq" uses the exact pivotal null and is the
@@ -192,10 +188,8 @@ IBPRESSO <- function(
     stop("CorOutcomeAux must be finite and have length 1, nrow(data), ",
          "or the number of complete instruments.")
 
-  ## Do NOT silently clamp.  An |I12| >= 1 means either the intercept was not
-  ## normalised by sqrt(I11 * I22) -- 4 pairs in LDSC_intercepts.csv exceed 1
-  ## on the raw scale and none do after normalising -- or the LDSC fit is not
-  ## usable for this pair.  Both need a decision, not a quiet rescue.
+  ## Not clamped: an out-of-range value indicates an unnormalised intercept or
+  ## an unusable LDSC fit, either of which the caller should resolve.
   if (any(abs(rho) >= 1))
     stop("CorOutcomeAux must be strictly between -1 and 1; the supplied value ",
          "does not define a positive-definite outcome sampling covariance. ",
@@ -203,20 +197,11 @@ IBPRESSO <- function(
          "univariate intercepts equal 1 -- use I12 / sqrt(I11 * I22), i.e. ",
          "ldsc_cor12() rather than ldsc_I12().")
 
-  ## Same warning MR-PRESSO issues (mr_presso.R, line 126), and for the same
-  ## reason.  The bootstrap tail is a multiple of 1/NbDistribution, so once
-  ## K / NbDistribution exceeds SignifThreshold the Bonferroni-corrected p-value
-  ## can only clear the threshold by being exactly zero -- that is, the observed
-  ## statistic must beat every null draw.  The per-SNP test then runs at an
-  ## effective level of about 1/NbDistribution instead of the intended
-  ## SignifThreshold/K.  It still fires, but not at its nominal level.
-  ## This warns rather than stops: callers wrap the fit in tryCatch(), so an
-  ## error would silently become NA and drop the replicate.
-  ##
-  ## Only relevant on the "bootstrap" route.  The analytic chi-square p-value
-  ## has no resolution floor, which is the main practical reason it is the
-  ## default; the global test keeps a 1/NbDistribution floor either way, but
-  ## that is a single test and is not multiplied by K.
+  ## Same warning MR-PRESSO issues, and for the same reason: the bootstrap tail
+  ## is a multiple of 1/NbDistribution, so once K / NbDistribution exceeds
+  ## SignifThreshold the Bonferroni-corrected p-value can clear the threshold
+  ## only by being exactly zero.  Bootstrap route only; the analytic
+  ## chi-square p-value has no resolution floor, which is why it is the default.
   if (OUTLIERtest && use_boot_snp && K / NbDistribution > SignifThreshold)
     warning("NbDistribution is small relative to the number of instruments: ",
             "K / NbDistribution = ", signif(K / NbDistribution, 3), " exceeds ",
@@ -317,12 +302,7 @@ IBPRESSO <- function(
   #              (mr_presso.R, `Exp <- randomSNP[,Y] - randomSNP[,X]*RSSobs[[2]][SNV]`)
   #   global   : leave-one-out slopes REFITTED on each bootstrap dataset
   #              (mr_presso.R, `RSSexp <- sapply(randomData, getRSS_LOO, ...)`)
-  # Refitting is done to MATCH mr_presso, and NOT on any claim about which way
-  # it moves the test.  An earlier version of this comment asserted that fixed
-  # slopes inflate the null and make the test conservative; that was backwards.
-  # In a null experiment refitting produced the LARGER mean statistic and
-  # exceeded the fixed-slope statistic in about 84% of draws.  The direction is
-  # therefore left unstated.
+  # Slopes are refitted to match mr_presso's construction.
   #
   # THREE independent standard normals per draw, one per GWAS.  The exposure is
   # assumed independent of both outcomes; the two outcomes are coupled through
