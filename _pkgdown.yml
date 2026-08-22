@@ -28,7 +28,6 @@ reference:
   - coheterogeneity_Q
   - IBMODE
   - IBPRESSO
-  - print.mrpresso_ib
 
 - title: Example data
   contents:
