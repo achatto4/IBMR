@@ -2,4 +2,4 @@
 # evaluation inside model formulas (the `weights =` argument of `lm()`) in
 # IBPRESSO(). Declaring them here silences the spurious "no visible binding for
 # global variable" NOTE from R CMD check without changing any behaviour.
-globalVariables(c("Weights", "Weights1"))
+utils::globalVariables(c("Weights", "Weights1"))

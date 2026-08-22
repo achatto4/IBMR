@@ -90,9 +90,12 @@ IBMODE <- function(BetaXG,
       S[i, i] <- sd(BetaIV_matrix[, i]) / n_snps^(1/6)
     }
 
-    # Compute weights based on inverse product of standard errors
+    # Compute weights based on inverse product of standard errors.  Scaled to
+    # sum to the sample size, which is the convention ks::kde expects; scaling
+    # to 1 instead leaves the estimate unchanged but makes ks rescale them and
+    # emit a warning on every call, including inside the bootstrap loop.
     weights <- 1 / apply(seBetaIV_matrix, 1, prod)
-    weights <- weights / sum(weights)
+    weights <- weights / sum(weights) * length(weights)
 
     # Store estimates for each phi
     estimates <- matrix(NA, nrow = length(phi), ncol = n_outcomes)

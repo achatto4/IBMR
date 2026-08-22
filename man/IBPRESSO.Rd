@@ -2,7 +2,7 @@
 % Please edit documentation in R/IBPRESSO.R
 \name{IBPRESSO}
 \alias{IBPRESSO}
-\title{MR-PRESSO with Instrument Borrowing}
+\title{IB-PRESSO: instrument borrowing for outlier-robust Mendelian randomization}
 \usage{
 IBPRESSO(
   BetaOutcome,
@@ -12,92 +12,161 @@ IBPRESSO(
   SdExposure,
   SdAux,
   data,
-  OUTLIERtest = FALSE,
+  OUTLIERtest = TRUE,
   DISTORTIONtest = FALSE,
   SignifThreshold = 0.05,
-  NbDistribution = 1000,
+  NbDistribution = 10000,
   seed = NULL,
-  n_cores = 1
+  n_cores = 1,
+  CorOutcomeAux = 0,
+  OutlierTestMethod = c("chisq", "bootstrap")
 )
 }
 \arguments{
-\item{BetaOutcome}{Character, column name for primary outcome SNP effects}
+\item{BetaOutcome}{Character, column name for primary outcome SNP effects.}
 
-\item{BetaExposure}{Character or vector, column name(s) for exposure SNP effects}
+\item{BetaExposure}{Character, column name for exposure SNP effects (one only).}
 
-\item{BetaAux}{Character, column name for auxiliary trait SNP effects (borrowed instrument)}
+\item{BetaAux}{Character, column name for auxiliary trait SNP effects.}
 
-\item{SdOutcome}{Character, column name for standard errors of outcome effects}
+\item{SdOutcome}{Character, column name for standard errors of outcome effects.}
 
-\item{SdExposure}{Character or vector, column name(s) for standard errors of exposure effects}
+\item{SdExposure}{Character, column name for standard errors of exposure effects.}
 
-\item{SdAux}{Character, column name for standard errors of auxiliary trait effects}
+\item{SdAux}{Character, column name for standard errors of auxiliary effects.}
 
-\item{data}{Data frame containing all the above columns}
+\item{data}{Data frame containing all the above columns, one row per instrument.}
 
-\item{OUTLIERtest}{Logical, whether to perform outlier detection (default: FALSE)}
+\item{OUTLIERtest}{Logical; perform the per-SNP outlier test and report the
+corrected estimate. Default \code{TRUE}.}
 
-\item{DISTORTIONtest}{Logical, whether to test if outliers cause distortion (default: FALSE)}
+\item{DISTORTIONtest}{Logical; test whether the removed instruments distort
+the estimate more than a random set of the same size. Default \code{FALSE}.}
 
-\item{SignifThreshold}{Numeric, significance threshold for tests (default: 0.05)}
+\item{SignifThreshold}{Numeric significance threshold, Bonferroni-corrected
+across instruments for the per-SNP test. Default 0.05.}
 
-\item{NbDistribution}{Integer, number of null distributions to generate (default: 1000)}
+\item{NbDistribution}{Integer, number of bootstrap null datasets for the
+GLOBAL test. Default 10000.}
 
-\item{seed}{Integer, random seed for reproducibility (default: NULL)}
+\item{seed}{Integer random seed, or \code{NULL}.}
 
-\item{n_cores}{Integer, number of cores for parallel processing (default: 1)}
+\item{n_cores}{Retained for backward compatibility and ignored.}
+
+\item{CorOutcomeAux}{Cross-outcome sampling correlation \eqn{\rho_j}: the
+cross-trait LDSC intercept on the CORRELATION scale,
+\eqn{I_{12}/\sqrt{I_{11} I_{22}}}. Scalar, or a vector of length
+\code{nrow(data)} or of the number of complete instruments. Must lie strictly
+inside \eqn{(-1, 1)}; a raw LDSC intercept generally does not, and is not a
+correlation. Default 0, which reproduces independent outcome GWAS.}
+
+\item{OutlierTestMethod}{\code{"chisq"} (default) for the analytic per-SNP null,
+or \code{"bootstrap"} for the previous Monte Carlo route.}
 }
 \value{
-A list containing:
-\item{raw_beta}{Raw causal effect estimate before outlier correction}
-\item{raw_se}{Standard error of raw estimate}
-\item{corrected_beta}{Outlier-corrected causal effect estimate (if outliers detected)}
-\item{corrected_se}{Standard error of corrected estimate}
-\item{p_value}{Global test p-value for horizontal pleiotropy}
-\item{p_distort}{P-value for distortion test (if DISTORTIONtest = TRUE)}
-\item{outlier_idx}{Indices of detected outlier instruments}
-\item{n_instruments}{Number of instruments used}
-\item{n_outliers}{Number of outliers detected}
+An object of class \code{mrpresso_ib}, a list with components:
+\item{raw_beta, raw_se}{IVW estimate and standard error using all instruments.}
+\item{corrected_beta, corrected_se}{Outlier-corrected estimate, or \code{NA} when
+no outlier was removed. Callers should fall back to the raw estimate.}
+\item{p_value}{Global heterogeneity test p-value (bootstrap).}
+\item{p_distort}{Distortion test p-value, or \code{NA}.}
+\item{outlier_idx}{Row indices of the removed instruments.}
+\item{outlyingness}{Observed per-SNP statistic \eqn{T_j}.}
+\item{outlier_pvals}{Bonferroni-corrected per-SNP p-values that were used for
+flagging; a copy of whichever of the next two \code{outlier_test_method} names.}
+\item{outlier_test_method}{\code{"chisq"} or \code{"bootstrap"}.}
+\item{outlier_pvals_chisq}{Analytic per-SNP p-values. Always computed.}
+\item{outlier_pvals_boot}{Bootstrap per-SNP p-values, or all \code{NA} when the
+analytic route was used.}
+\item{outcome_correlation}{The \eqn{\rho_j} actually used, after alignment.}
+\item{covariance_model}{Free-text description of the covariance assumption.}
+\item{n_instruments, n_outliers}{Counts.}
 }
 \description{
-Performs Mendelian Randomization Pleiotropy RESidual Sum and Outlier (MR-PRESSO)
-test extended for instrument borrowing scenarios. Detects and corrects for
-horizontal pleiotropy using an auxiliary trait to identify outlier instruments.
+Extends MR-PRESSO (Verbanck et al., 2018) by scoring each instrument on a
+primary outcome AND an auxiliary outcome simultaneously. Every other element
+of the procedure -- leave-one-out IVW fitting through the origin, the global
+heterogeneity bootstrap, the Bonferroni correction across instruments, and
+the outlier-corrected IVW estimate -- is MR-PRESSO's, unchanged, so that any
+difference in performance is attributable to the auxiliary trait and to
+nothing else.
 }
-\details{
-This function extends MR-PRESSO to handle instrument borrowing by incorporating
-an auxiliary trait. It uses leave-one-out cross-validation and Mahalanobis
-distance in a bivariate residual space (outcome + auxiliary trait) to detect
-pleiotropic outliers. The global test assesses overall horizontal pleiotropy,
-while the distortion test evaluates whether removing outliers significantly
-changes the causal estimate.
-}
-\examples{
-\dontrun{
-# Simulate data
-set.seed(123)
-n_snps <- 50
-dat <- data.frame(
-  beta_exposure = rnorm(n_snps, 0.1, 0.02),
-  beta_outcome = rnorm(n_snps, 0.05, 0.03),
-  beta_aux = rnorm(n_snps, 0.04, 0.025),
-  se_exposure = abs(rnorm(n_snps, 0.01, 0.002)),
-  se_outcome = abs(rnorm(n_snps, 0.015, 0.003)),
-  se_aux = abs(rnorm(n_snps, 0.012, 0.002))
-)
+\section{Per-SNP statistic}{
 
-# Run MR-PRESSO with instrument borrowing
-results <- IBPRESSO(
-  BetaOutcome = "beta_outcome",
-  BetaExposure = "beta_exposure",
-  BetaAux = "beta_aux",
-  SdOutcome = "se_outcome",
-  SdExposure = "se_exposure",
-  SdAux = "se_aux",
-  data = dat,
-  OUTLIERtest = TRUE,
-  DISTORTIONtest = TRUE,
-  NbDistribution = 1000
-)
+Let \eqn{r_{1j}} and \eqn{r_{2j}} be the leave-one-out residuals of the
+primary and auxiliary outcomes at instrument \eqn{j}, on the raw scale of the
+reported effect estimates. Conditional on the leave-one-out slopes
+\eqn{b_{1,-j}} and \eqn{b_{2,-j}} their sampling covariance is known:
+\deqn{V_j = \begin{pmatrix} s_{Y_1j}^2 + b_{1,-j}^2 s_{Xj}^2 &
+  \rho_j s_{Y_1j} s_{Y_2j} + b_{1,-j} b_{2,-j} s_{Xj}^2 \\
+  \rho_j s_{Y_1j} s_{Y_2j} + b_{1,-j} b_{2,-j} s_{Xj}^2 &
+  s_{Y_2j}^2 + b_{2,-j}^2 s_{Xj}^2 \end{pmatrix},}
+and the statistic is the generalized squared residual
+\deqn{T_j = (r_{1j}, r_{2j}) V_j^{-1} (r_{1j}, r_{2j})^\top
+ = \frac{v_{2j} r_{1j}^2 - 2 c_{12,j} r_{1j} r_{2j} + v_{1j} r_{2j}^2}
+        {v_{1j} v_{2j} - c_{12,j}^2}.}
+MR-PRESSO's statistic is the primary term alone. Two dependence sources enter
+\eqn{V_j}, each exactly once: outcome-GWAS sample overlap through
+\eqn{\rho_j}, and shared exposure noise through \eqn{b_{1,-j} b_{2,-j}
+s_{Xj}^2}, which is present even when \eqn{\rho_j = 0}.
 }
+
+\section{Why the covariance is not estimated}{
+
+\eqn{V_j} is built from the reported GWAS standard errors and a cross-trait
+LDSC intercept, never from the observed residuals. Estimating a
+\eqn{2 \times 2} residual covariance (robustly or otherwise) fails in three
+ways: the invalid instruments inflate the estimate along precisely the
+direction that identifies them; the resulting Mahalanobis distance is bounded
+by \eqn{1/\pi} where \eqn{\pi} is the fraction of invalid instruments, so at
+\eqn{\pi = 0.5} no instrument can exceed 2 against a cutoff of 5.99; and the
+minimum covariance determinant has a breakdown point of 50 percent.
+}
+
+\section{Reference distributions}{
+
+\eqn{T_j} is pivotal -- a quadratic form in a bivariate normal with known
+covariance -- so conditional on the leave-one-out slopes its null is exactly
+\eqn{\chi^2_2} and the per-SNP p-value is analytic by default. This removes
+the bootstrap resolution floor of \eqn{K/\code{NbDistribution}}, which at
+\eqn{K = 1270} and 10000 draws is 0.127 and makes flagging impossible at any
+sane threshold. The GLOBAL test keeps the bootstrap, because the
+leave-one-out slopes are refitted on every draw and \eqn{\sum_j T_j} has no
+closed form. Setting \code{OutlierTestMethod = "bootstrap"} restores the previous
+per-SNP behaviour; both sets of p-values are always returned.
+
+Neither route propagates the uncertainty in the leave-one-out slopes, so on
+self-fitted null data \eqn{T_j} is inflated by roughly \eqn{1 + 2/K}
+(measured mean 2.03 at \eqn{K = 100}, 2.02 at \eqn{K = 200}, against 2).
+}
+
+\section{Weights}{
+
+Two weights, with a deliberate division of labour.
+\eqn{W_j = 1/(s_{Y_1j} s_{Y_2j})} fits the leave-one-out slopes, a single
+weight applied to both outcomes so that neither trait is privileged; it does
+not enter the statistic, since \eqn{V_j} carries all the scaling. The causal
+estimate is an IVW fit weighted by \eqn{1/s_{Y_1j}^2}, which is MR-PRESSO's
+own weight; the final estimator is therefore identical to MR-PRESSO's and the
+two methods differ only in which instruments they retain.
+}
+
+\examples{
+set.seed(1)
+K <- 40
+bx <- runif(K, 0.02, 0.05)
+g  <- c(rnorm(12, 0.012, 0.004), rep(0, K - 12))
+d  <- data.frame(
+  BetaExposure = rnorm(K, bx, 1/sqrt(1e5)),  SdExposure = 1/sqrt(1e5),
+  BetaOutcome  = rnorm(K, 0.1 * bx + g, 1/sqrt(5e4)), SdOutcome = 1/sqrt(5e4),
+  BetaAux      = rnorm(K, 0.3 * bx + g, 1/sqrt(1e5)), SdAux     = 1/sqrt(1e5)
+)
+IBPRESSO("BetaOutcome", "BetaExposure", "BetaAux",
+         "SdOutcome", "SdExposure", "SdAux",
+         data = d, NbDistribution = 2000, seed = 1, CorOutcomeAux = 0.3)
+}
+\references{
+Verbanck M, Chen CY, Neale B, Do R (2018). Detection of widespread horizontal
+pleiotropy in causal relationships inferred from Mendelian randomization
+between complex traits and diseases. \emph{Nature Genetics} 50, 693-698.
 }
